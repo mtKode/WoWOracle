@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms only for the tray icon (NotifyIcon). Its global usings clash with WPF names, so drop them. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\wow-oracle.ico</ApplicationIcon>
+    <AssemblyTitle>WoW Oracle</AssemblyTitle>
+    <Product>WoW Oracle</Product>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\background.jpg" />
+    <Resource Include="Assets\wow-oracle.ico" />
+    <Resource Include="Assets\wow-oracle-icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.*" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <ProjectReference Include="..\WowCompanion.Core\WowCompanion.Core.csproj" />
+    <ProjectReference Include="..\WowCompanion.Data\WowCompanion.Data.csproj" />
+  </ItemGroup>
+</Project>

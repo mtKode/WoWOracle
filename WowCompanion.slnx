@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/WowCompanion.Core/WowCompanion.Core.csproj" />
+  <Project Path="src/WowCompanion.Data/WowCompanion.Data.csproj" />
+  <Project Path="src/WowCompanion.Desktop/WowCompanion.Desktop.csproj" />
+  <Project Path="src/WowCompanion.Spike/WowCompanion.Spike.csproj" />
+</Solution>

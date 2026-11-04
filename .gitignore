@@ -1,0 +1,65 @@
+# ---- Build output ----
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]64/
+*.binlog
+artifacts/
+TestResults/
+
+# Published zips and exes (publish.ps1)
+dist/
+
+# ---- IDE / editor ----
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.DotSettings.user
+_ReSharper*/
+.ionide/
+
+# ---- NuGet ----
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+.nuget/
+
+# ---- OS clutter ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+*.lnk
+
+# ---- App data that never belongs in the repo ----
+# (the app keeps its databases, caches and settings in %LOCALAPPDATA%\WowCompanion; these catch stray copies)
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+wow-path.txt
+
+# Known.lua is generated per PC by the app (ids its game data has). publish.ps1 ships an empty placeholder.
+addon/WoWOracle/Known.lua
+
+# ---- Scratch ----
+explore.txt
+Claude outputs/
+*.log
+*.tmp
+*.bak
+*.orig
+
+# ---- Licensed font (Friz Quadrata): keep it local, don't publish it ----
+font/
