@@ -44,6 +44,51 @@ public static partial class GameDatabaseBuilder
         "TraitNodeGroupXTraitCost", "TraitCurrency", "TraitCurrencySource", "TraitTreeXTraitCurrency", "TraitSubTree",
     ];
 
+    /// <summary>
+    /// Crafted items the client's Item table has but ItemSparse (names, stats) doesn't yet: a stand-in named after the
+    /// recipe that makes it, with its real class and icon, listed in placeholder_items so real data replaces it.
+    /// </summary>
+    private static int InsertPlaceholderItems(SqliteConnection connection, SqliteTransaction transaction,
+        Dictionary<int, (int Class, int Subclass)> classes, Dictionary<int, int> icons)
+    {
+        var missing = new List<(int Id, string Name)>();
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = """
+                SELECT r.created_item_id, MIN(r.name) FROM recipes r
+                WHERE r.created_item_id > 0 AND NOT EXISTS (SELECT 1 FROM items i WHERE i.id = r.created_item_id)
+                GROUP BY r.created_item_id
+                """;
+            using var r = query.ExecuteReader();
+            while (r.Read()) missing.Add((r.GetInt32(0), r.GetString(1)));
+        }
+
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = """
+            INSERT INTO items (id, name, description, quality, item_level, required_level, class_id, subclass_id,
+                               inventory_type, bonding, sell_price, buy_price, stack_size, stats, stats_raw, icon_file_id)
+            VALUES ($id, $name, 'Made by the recipe of the same name. Not in the downloaded game data yet: the rest fills in when the game data or the WoW Oracle addon has it.',
+                    1, 0, 0, $class, $sub, 0, 0, 0, 0, 1, '', '', $icon);
+            INSERT INTO placeholder_items (id) VALUES ($id);
+            """;
+        var added = 0;
+        foreach (var (itemId, recipeName) in missing)
+        {
+            if (!classes.TryGetValue(itemId, out var cls) || recipeName.Trim().Length == 0) continue;
+            insert.Parameters.Clear();
+            insert.Parameters.AddWithValue("$id", itemId);
+            insert.Parameters.AddWithValue("$name", recipeName.Trim());
+            insert.Parameters.AddWithValue("$class", cls.Class);
+            insert.Parameters.AddWithValue("$sub", cls.Subclass);
+            insert.Parameters.AddWithValue("$icon", icons.GetValueOrDefault(itemId));
+            insert.ExecuteNonQuery();
+            added++;
+        }
+        return added;
+    }
+
     private const string Schema = """
         CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE items (
@@ -96,6 +141,9 @@ public static partial class GameDatabaseBuilder
         CREATE INDEX item_set_items_set ON item_set_items (set_id);
         CREATE TABLE item_set_bonuses (set_id INTEGER NOT NULL, threshold INTEGER NOT NULL, spell_id INTEGER NOT NULL);
         CREATE INDEX item_set_bonuses_set ON item_set_bonuses (set_id);
+        -- Items the client knows (Item table: class, icon) but wago.tools has no ItemSparse row for yet, added so recipes
+        -- that make them show a name and an icon. The addon's learned data replaces them (LearnedItemStore).
+        CREATE TABLE placeholder_items (id INTEGER PRIMARY KEY);
         CREATE VIRTUAL TABLE items_fts USING fts5(
             name, description,
             content='items', content_rowid='id',
@@ -205,6 +253,8 @@ public static partial class GameDatabaseBuilder
             InsertClassesAndTalents(connection, transaction, Csv);
             var talentSource = ReplaceWithTraitTalents(connection, transaction, Csv, spells);
             FillRecipeRequirements(connection, transaction);
+            var placeholders = InsertPlaceholderItems(connection, transaction, classes, icons);
+            if (placeholders > 0) numbers.Warnings.Add($"{placeholders} crafted items have no item data yet (named after their recipe).");
 
             SourceImporter.ImportNames(connection, transaction, Csv);
             var enchantCount = 0;

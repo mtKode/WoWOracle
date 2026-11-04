@@ -10,11 +10,12 @@ namespace WowCompanion.Desktop;
 /// <summary>
 /// Finding WoW and installing the addon. A banner above the search bar shows up only when something needs a click:
 /// WoW not found (Browse…), the addon not installed (Install addon) or older than the one that came with the app
-/// (Update addon). "Addon" in the status bar opens it any time.
+/// (Update addon). "Addon" in the status bar opens it any time. When all that is fine, the published app offers once to
+/// put itself in the Start menu (✕ means no, and it isn't asked again).
 /// </summary>
 public partial class MainViewModel
 {
-    private enum SetupAction { None, Browse, Install }
+    private enum SetupAction { None, Browse, Install, StartMenu }
 
     private SetupAction _setupAction;
     private bool _setupDismissed;
@@ -76,7 +77,7 @@ public partial class MainViewModel
 
         if (bundled is null || bundledVersion is null)
         {
-            HideSetup();
+            OfferStartMenu();
             return;
         }
         if (clients.Count == 0)
@@ -105,7 +106,49 @@ public partial class MainViewModel
         }
         else
         {
+            OfferStartMenu();
+        }
+    }
+
+    /// <summary>
+    /// The published app, not in the Start menu yet: offer it in the banner. An existing shortcut follows the app when
+    /// its folder moved (a new version unzipped somewhere else).
+    /// </summary>
+    private void OfferStartMenu()
+    {
+        HideSetup();
+        if (StartMenuShortcut.PublishedExe is not { } exe) return;
+        try
+        {
+            if (StartMenuShortcut.Exists)
+            {
+                if (StartMenuShortcut.FollowMove(exe)) Log($"Start menu shortcut now points to {exe}.");
+                return;
+            }
+        }
+        catch (Exception) { return; }
+        if (_talentBuilds.GetSetting("startmenu_declined") == "1") return;
+        ShowSetup("Add WoW Oracle to the Start menu? Then Windows search (and launchers like PowerToys Run) find it, wherever this folder is.",
+            "Add to Start menu", SetupAction.StartMenu, showBrowse: false);
+    }
+
+    [RelayCommand]
+    private void AddToStartMenu()
+    {
+        if (StartMenuShortcut.PublishedExe is not { } exe)
+        {
+            Toast("Only the published app (WoW Oracle.exe) can be added to the Start menu.");
+            return;
+        }
+        if (StartMenuShortcut.Create(exe))
+        {
+            Log($"Added to the Start menu: \"WoW Oracle\" → {exe}.");
+            Toast("WoW Oracle is in the Start menu. Search for it like any app.");
             HideSetup();
+        }
+        else
+        {
+            Toast("Windows didn't let the Oracle make a Start menu shortcut.");
         }
     }
 
@@ -129,11 +172,14 @@ public partial class MainViewModel
     {
         if (_setupAction == SetupAction.Browse) BrowseWow();
         else if (_setupAction == SetupAction.Install) InstallAddon();
+        else if (_setupAction == SetupAction.StartMenu) AddToStartMenu();
     }
 
     [RelayCommand]
     private void DismissSetup()
     {
+        // ✕ on the Start menu offer is a "no thanks" for good; for the addon it only hides the banner this session.
+        if (_setupAction == SetupAction.StartMenu) _talentBuilds.SetSetting("startmenu_declined", "1");
         _setupDismissed = true;
         SetupBannerVisible = false;
     }
@@ -144,6 +190,10 @@ public partial class MainViewModel
     {
         _setupDismissed = false;
         CheckSetup(announce: false);
+        // Said no to the Start menu earlier? The Addon button offers it again (all else being fine).
+        if (!SetupBannerVisible && StartMenuShortcut.PublishedExe is not null && !StartMenuShortcut.Exists)
+            ShowSetup("Add WoW Oracle to the Start menu? Then Windows search (and launchers like PowerToys Run) find it, wherever this folder is.",
+                "Add to Start menu", SetupAction.StartMenu, showBrowse: false);
         if (!SetupBannerVisible)
         {
             var root = WowInstall.Roots(paths.Root).FirstOrDefault();

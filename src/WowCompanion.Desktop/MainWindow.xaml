@@ -5,7 +5,7 @@
                  xmlns:local="clr-namespace:WowCompanion.Desktop"
                  Title="WoW Oracle"
                  Icon="pack://application:,,,/Assets/wow-oracle.ico"
-                 Width="1130" Height="1000" MinWidth="760" MinHeight="560"
+                 Width="1130" Height="950" MinWidth="760" MinHeight="560"
                  FontFamily="{DynamicResource Serif}"
                  Topmost="{Binding AlwaysOnTop}"
                  WindowStyle="None"
@@ -302,6 +302,30 @@
                                 <Setter TargetName="Chip" Property="BorderBrush" Value="{StaticResource Gold}" />
                                 <Setter TargetName="Chip" Property="Background" Value="{StaticResource Hover}" />
                                 <Setter Property="Foreground" Value="{StaticResource Gold}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Alliance / Horde chips: the faction's colour (Tag) for the text, and for the frame when picked. -->
+        <Style x:Key="FactionChip" TargetType="ListBoxItem" BasedOn="{StaticResource ChipItem}">
+            <Setter Property="Foreground" Value="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Chip" Padding="10,4" Background="Transparent"
+                                BorderBrush="{StaticResource Edge}" BorderThickness="1" CornerRadius="3">
+                            <ContentPresenter TextElement.FontSize="12" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{StaticResource Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Setter TargetName="Chip" Property="Background" Value="{StaticResource Hover}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -620,48 +644,56 @@
                                     </ItemsControl.ItemContainerStyle>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border x:Name="Cell" Width="84" Height="84" Margin="6" CornerRadius="4"
-                                                    Background="{StaticResource PanelRaised}" BorderThickness="2"
-                                                    BorderBrush="{StaticResource Divider}" Cursor="Hand"
-                                                    MouseEnter="OnTalentMouseEnter" MouseLeave="OnTalentMouseLeave"
-                                                    MouseDown="OnTalentMouseDown">
-                                                <Grid>
-                                                    <Border Style="{StaticResource IconFrame}" Width="42" Height="42"
-                                                            VerticalAlignment="Top" Margin="0,5,0,0">
-                                                        <local:GameIcon FileId="{Binding IconId}" Size="large" />
+                                            <!-- One 96 px slot: a big icon framed in the talent's state colour, the rank on a badge over
+                                                 its top-right corner, the name underneath (two lines may reach a little into the gap below). TalentArrow uses the same geometry (icon centre 10 px above
+                                                 the slot centre, 29 px to its edge). -->
+                                            <Grid x:Name="Slot" Width="96" Height="96" Background="Transparent" Cursor="Hand"
+                                                  MouseEnter="OnTalentMouseEnter" MouseLeave="OnTalentMouseLeave" MouseDown="OnTalentMouseDown">
+                                                <Grid Width="58" Height="58" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,9,0,0">
+                                                    <Border x:Name="Cell" CornerRadius="5" BorderThickness="2" Background="{StaticResource Bg}"
+                                                            BorderBrush="{StaticResource Divider}" ClipToBounds="True">
+                                                        <local:GameIcon x:Name="CellIcon" FileId="{Binding IconId}" Size="large" />
                                                     </Border>
-                                                    <TextBlock x:Name="CellName" Text="{Binding Name}" FontSize="10"
-                                                               TextWrapping="Wrap" TextAlignment="Center" Margin="2,48,2,0"
-                                                               VerticalAlignment="Top" MaxHeight="28" TextTrimming="CharacterEllipsis"
-                                                               Foreground="{StaticResource Dim}" />
-                                                    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2"
-                                                            Padding="4,0" CornerRadius="2" Background="{StaticResource Bg}">
-                                                        <TextBlock x:Name="CellRank" Text="{Binding RankText}" FontSize="11.5"
+                                                    <!-- Rank badge, half outside the frame like the game's talent window. -->
+                                                    <Border x:Name="RankBadge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-8,-10,0"
+                                                            Padding="5,0,5,1" CornerRadius="7" BorderThickness="1"
+                                                            Background="#E6100C08" BorderBrush="{StaticResource Divider}">
+                                                        <TextBlock x:Name="CellRank" Text="{Binding RankText}" FontSize="13" FontWeight="SemiBold"
                                                                    Foreground="{StaticResource Dim}" />
                                                     </Border>
                                                 </Grid>
-                                            </Border>
+                                                <TextBlock x:Name="CellName" Text="{Binding Name}" FontSize="12.5" TextWrapping="Wrap"
+                                                           TextAlignment="Center" VerticalAlignment="Top" Margin="0,69,0,-6" MaxHeight="33"
+                                                           TextTrimming="CharacterEllipsis" Foreground="{StaticResource Dim}" />
+                                            </Grid>
                                             <DataTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding State}" Value="Locked">
-                                                    <Setter TargetName="Cell" Property="Opacity" Value="0.55" />
+                                                    <Setter TargetName="CellIcon" Property="Opacity" Value="0.4" />
+                                                    <Setter TargetName="CellName" Property="Opacity" Value="0.7" />
+                                                    <Setter TargetName="RankBadge" Property="Opacity" Value="0.7" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding State}" Value="Available">
                                                     <Setter TargetName="Cell" Property="BorderBrush" Value="{StaticResource Green}" />
+                                                    <Setter TargetName="RankBadge" Property="BorderBrush" Value="{StaticResource Green}" />
                                                     <Setter TargetName="CellName" Property="Foreground" Value="{StaticResource Parchment}" />
                                                     <Setter TargetName="CellRank" Property="Foreground" Value="{StaticResource Green}" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding State}" Value="Partial">
                                                     <Setter TargetName="Cell" Property="BorderBrush" Value="{StaticResource Green}" />
-                                                    <Setter TargetName="Cell" Property="Background" Value="{StaticResource Hover}" />
+                                                    <Setter TargetName="RankBadge" Property="BorderBrush" Value="{StaticResource Green}" />
                                                     <Setter TargetName="CellName" Property="Foreground" Value="{StaticResource Parchment}" />
                                                     <Setter TargetName="CellRank" Property="Foreground" Value="{StaticResource Green}" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding State}" Value="Max">
                                                     <Setter TargetName="Cell" Property="BorderBrush" Value="{StaticResource Gold}" />
-                                                    <Setter TargetName="Cell" Property="Background" Value="{StaticResource Hover}" />
+                                                    <Setter TargetName="RankBadge" Property="BorderBrush" Value="{StaticResource Gold}" />
                                                     <Setter TargetName="CellName" Property="Foreground" Value="{StaticResource Gold}" />
                                                     <Setter TargetName="CellRank" Property="Foreground" Value="{StaticResource Gold}" />
                                                 </DataTrigger>
+                                                <!-- Hover: the frame lights up (after the state colours, so it wins). -->
+                                                <Trigger SourceName="Slot" Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Cell" Property="BorderBrush" Value="{StaticResource Parchment}" />
+                                                </Trigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -944,13 +976,13 @@
                         <!-- Shortcut reminder -->
                         <Border BorderBrush="{StaticResource Divider}" BorderThickness="0,1,0,0" Padding="12,6">
                           <StackPanel>
-                            <TextBlock FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap">
+                            <TextBlock FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap">
                                 <Run Text="Enter" Foreground="{StaticResource Gold}" /><Run Text=" open   " />
                                 <Run Text="Shift+Enter / Shift+click" Foreground="{StaticResource Gold}" /><Run Text=" add to gear set   " />
                                 <Run Text="Ctrl+Enter / Ctrl+click" Foreground="{StaticResource Gold}" /><Run Text=" add recipe to craft list   " />
                                 <Run Text="Esc" Foreground="{StaticResource Gold}" /><Run Text=" close" />
                             </TextBlock>
-                            <TextBlock FontSize="11" Foreground="{StaticResource Dim}" Margin="0,3,0,0">
+                            <TextBlock FontSize="12" Foreground="{StaticResource Dim}" Margin="0,3,0,0">
                                 <Run Text="All filters (stat:, slot:, type:, q:, lvl:, class:) under the" /> <Run Text="?" Foreground="{StaticResource Gold}" /> <Run Text="button in the search box." />
                             </TextBlock>
                           </StackPanel>
@@ -1090,7 +1122,7 @@
                                                     <ControlTemplate TargetType="Button">
                                                         <Border x:Name="Row" Background="Transparent" Padding="4,2" CornerRadius="2">
                                                             <TextBlock FontSize="13">
-                                                                <Run Text="{Binding Title, Mode=OneWay}" Foreground="{Binding TitleBrush, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Meta, Mode=OneWay}" FontSize="11" Foreground="{StaticResource Dim}" />
+                                                                <Run Text="{Binding Title, Mode=OneWay}" Foreground="{Binding TitleBrush, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Meta, Mode=OneWay}" FontSize="12" Foreground="{StaticResource Dim}" />
                                                             </TextBlock>
                                                         </Border>
                                                         <ControlTemplate.Triggers>
@@ -1286,7 +1318,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="0,0,0,10">
-                                                <TextBlock Text="{Binding Label}" FontSize="11"
+                                                <TextBlock Text="{Binding Label}" FontSize="12"
                                                            Foreground="{StaticResource Dim}" />
                                                 <TextBox Style="{StaticResource CopyText}" Text="{Binding Value, Mode=OneWay}" />
                                             </StackPanel>
@@ -1345,7 +1377,7 @@
                 <Grid Grid.Row="2" Margin="2,0,0,6">
                     <TextBlock Text="{Binding RecipeInfo}" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <TextBlock Text="Sort by" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="Sort by" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <ComboBox Width="150" ItemsSource="{Binding RecipeSorts}" SelectedIndex="{Binding RecipeSortIndex}" />
                     </StackPanel>
                 </Grid>
@@ -1545,20 +1577,26 @@
                         <StackPanel>
                             <WrapPanel>
                                 <StackPanel Margin="0,0,16,6">
-                                    <TextBlock Text="Character" FontSize="11" Foreground="{StaticResource Dim}" />
-                                    <ComboBox ItemsSource="{Binding PlanCharacters}" SelectedItem="{Binding PlanCharacter}" MinWidth="170" />
+                                    <TextBlock Text="Character" FontSize="13" Foreground="{StaticResource Dim}" />
+                                    <!-- Characters the addon synced: their skill, known recipes and bags fill in. None yet: a hint. -->
+                                    <ComboBox ItemsSource="{Binding PlanCharacters}" SelectedItem="{Binding PlanCharacter}" MinWidth="170"
+                                              Visibility="{Binding HasPlanCharacters, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Whose skill, known recipes and bags to plan with. Each character keeps its own typed counts." />
+                                    <TextBlock Text="None yet: log in with the addon" FontSize="13" Foreground="{StaticResource Dim}" Margin="0,5,0,0"
+                                               ToolTip="With the WoWOracle addon, each character's skill, known recipes and bags appear here by themselves (log in, or /oracle sync)."
+                                               Visibility="{Binding NoPlanCharacters, Converter={StaticResource BoolToVis}}" />
                                 </StackPanel>
                                 <StackPanel Margin="0,0,16,6">
-                                    <TextBlock Text="Profession" FontSize="11" Foreground="{StaticResource Dim}" />
+                                    <TextBlock Text="Profession" FontSize="13" Foreground="{StaticResource Dim}" />
                                     <ComboBox ItemsSource="{Binding PlanProfessions}" SelectedItem="{Binding PlanProfession}" MinWidth="150" />
                                 </StackPanel>
                                 <StackPanel Margin="0,0,10,6">
-                                    <TextBlock Text="Skill now" FontSize="11" Foreground="{StaticResource Dim}" />
+                                    <TextBlock Text="Skill now" FontSize="13" Foreground="{StaticResource Dim}" />
                                     <TextBox Style="{StaticResource FilterTextBox}" Width="70"
                                              Text="{Binding PlanFromText, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                 </StackPanel>
                                 <StackPanel Margin="0,0,16,6">
-                                    <TextBlock Text="Goal" FontSize="11" Foreground="{StaticResource Dim}" />
+                                    <TextBlock Text="Goal" FontSize="13" Foreground="{StaticResource Dim}" />
                                     <TextBox Style="{StaticResource FilterTextBox}" Width="70"
                                              Text="{Binding PlanToText, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                 </StackPanel>
@@ -1569,11 +1607,13 @@
                                 <CheckBox Content="Found recipes" IsChecked="{Binding PlanDropRecipes}" Foreground="{StaticResource Parchment}"
                                           Margin="0,0,14,0" ToolTip="Recipes from drops and quests (the ones you know are always used)" />
                                 <CheckBox Content="Make sub-parts" IsChecked="{Binding PlanSubParts}" Foreground="{StaticResource Parchment}"
-                                          Margin="0,0,14,0" ToolTip="Bolts, cured leather, rods… are made from their own reagents" />
+                                          Margin="0,0,14,0" ToolTip="Bolts, cured leather, rods… are made from their own reagents"
+                                          Visibility="{Binding PlanHasSubParts, Converter={StaticResource BoolToVis}}" />
                                 <CheckBox Content="I smelt my own bars" IsChecked="{Binding PlanSmelt}" Foreground="{StaticResource Parchment}"
-                                          ToolTip="Bars become ore in the shopping list" />
+                                          ToolTip="Bars become ore in the shopping list (professions that use bars)"
+                                          Visibility="{Binding PlanUsesBars, Converter={StaticResource BoolToVis}}" />
                             </WrapPanel>
-                            <TextBlock Text="{Binding PlanCharacterNote}" FontSize="11" Foreground="{StaticResource Dim}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding PlanCharacterNote}" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,6,0,0" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
 
@@ -1615,12 +1655,12 @@
                                                         </Border>
                                                         <StackPanel DockPanel.Dock="Right" Margin="10,0,0,0">
                                                             <TextBlock Text="{Binding CraftsText}" FontSize="14" Foreground="{StaticResource Parchment}" HorizontalAlignment="Right" />
-                                                            <TextBlock Text="{Binding CostText}" FontSize="11" Foreground="{StaticResource Dim}" HorizontalAlignment="Right" />
+                                                            <TextBlock Text="{Binding CostText}" FontSize="12" Foreground="{StaticResource Dim}" HorizontalAlignment="Right" />
                                                         </StackPanel>
                                                         <StackPanel>
                                                             <TextBlock Text="{Binding Recipe}" FontSize="14" Foreground="{StaticResource Parchment}" TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock Text="{Binding Reagents}" FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
-                                                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{StaticResource Gold}" Opacity="0.8" />
+                                                            <TextBlock Text="{Binding Reagents}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding Source}" FontSize="12" Foreground="{StaticResource Gold}" Opacity="0.8" />
                                                         </StackPanel>
                                                     </DockPanel>
                                                 </Border>
@@ -1661,7 +1701,7 @@
                                                                Foreground="{StaticResource Parchment}" VerticalAlignment="Center" ToolTip="Needed" />
                                                     <StackPanel VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding Source}" Foreground="{StaticResource Dim}" FontSize="11" />
+                                                        <TextBlock Text="{Binding Source}" Foreground="{StaticResource Dim}" FontSize="12" />
                                                     </StackPanel>
                                                 </DockPanel>
                                             </DataTemplate>
@@ -1678,7 +1718,7 @@
                                                         <local:GameIcon FileId="{Binding IconId}" Size="small" />
                                                     </Border>
                                                     <TextBlock VerticalAlignment="Center" FontSize="13">
-                                                        <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Text, Mode=OneWay}" Foreground="{StaticResource Dim}" FontSize="11" />
+                                                        <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Text, Mode=OneWay}" Foreground="{StaticResource Dim}" FontSize="12" />
                                                     </TextBlock>
                                                 </DockPanel>
                                             </DataTemplate>
@@ -1747,7 +1787,7 @@
                                         <StackPanel VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Parchment}"
                                                        TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Text="{Binding Meta}" FontSize="12" Foreground="{StaticResource Dim}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                     </DockPanel>
@@ -1877,7 +1917,7 @@
                         <StackPanel>
                             <TextBlock Text="{Binding TalentSummary}" FontSize="16" Foreground="{StaticResource Gold}" />
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="Level" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
+                                <TextBlock Text="Level" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
                                 <TextBox Style="{StaticResource FilterTextBox}" Width="54" Margin="6,0,10,0" Padding="6,3"
                                          Text="{Binding TalentLevel, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
                                 <TextBlock Text="{Binding PointsLeftText}" FontSize="12" Foreground="{StaticResource Parchment}"
@@ -1914,7 +1954,7 @@
                         <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
                             <!-- Talent sets for this class -->
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <TextBlock Text="Talent set" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
+                                <TextBlock Text="Talent set" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
                                 <ComboBox Width="240" Margin="8,0,8,0" ItemsSource="{Binding TalentSets}" DisplayMemberPath="Name"
                                           SelectedItem="{Binding SelectedTalentSet}" />
                                 <TextBox Style="{StaticResource FilterTextBox}" Width="200" Padding="6,3" Tag="Set name"
@@ -1941,12 +1981,12 @@
                                     BorderBrush="{StaticResource Edge}" BorderThickness="1">
                                 <StackPanel>
                                     <TextBlock Text="Icy Veins" FontSize="14" Foreground="{StaticResource Gold}" />
-                                    <TextBlock Text="Export: this build" FontSize="11" Foreground="{StaticResource Dim}" Margin="0,6,0,3" />
+                                    <TextBlock Text="Export: this build" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,6,0,3" />
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Content="Copy" Style="{StaticResource PillButton}" Margin="6,0,0,0" Command="{Binding CopyIcyVeinsLinkCommand}" />
                                         <TextBox Style="{StaticResource FilterTextBox}" Padding="6,3" IsReadOnly="True" Text="{Binding IcyVeinsExport, Mode=OneWay}" />
                                     </DockPanel>
-                                    <TextBlock Text="Import: paste a link, becomes a new set" FontSize="11" Foreground="{StaticResource Dim}" Margin="0,8,0,3" />
+                                    <TextBlock Text="Import: paste a link, becomes a new set" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,8,0,3" />
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Content="Import" Style="{StaticResource PillButton}" Margin="6,0,0,0" Command="{Binding ImportIcyVeinsCommand}" />
                                         <TextBox Style="{StaticResource FilterTextBox}" Padding="6,3" Tag="…/mage-talent-calculator#tc-…"
@@ -1962,12 +2002,12 @@
                                     BorderBrush="{StaticResource Edge}" BorderThickness="1">
                                 <StackPanel>
                                     <TextBlock Text="Wowhead" FontSize="14" Foreground="{StaticResource Gold}" />
-                                    <TextBlock Text="Export: this build" FontSize="11" Foreground="{StaticResource Dim}" Margin="0,6,0,3" />
+                                    <TextBlock Text="Export: this build" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,6,0,3" />
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Content="Copy" Style="{StaticResource PillButton}" Margin="6,0,0,0" Command="{Binding CopyWowheadLinkCommand}" />
                                         <TextBox Style="{StaticResource FilterTextBox}" Padding="6,3" IsReadOnly="True" Text="{Binding WowheadExport, Mode=OneWay}" />
                                     </DockPanel>
-                                    <TextBlock Text="Import: paste a link, becomes a new set" FontSize="11" Foreground="{StaticResource Dim}" Margin="0,8,0,3" />
+                                    <TextBlock Text="Import: paste a link, becomes a new set" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,8,0,3" />
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Content="Import" Style="{StaticResource PillButton}" Margin="6,0,0,0" Command="{Binding ImportWowheadCommand}" />
                                         <TextBox Style="{StaticResource FilterTextBox}" Padding="6,3" Tag="…/forever/talent-calc/mage/v2…"
@@ -2092,7 +2132,7 @@
                         BorderBrush="{StaticResource Edge}" BorderThickness="1" CornerRadius="3">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Gear set" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
+                            <TextBlock Text="Gear set" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
                             <ComboBox Width="280" Margin="8,0,8,0" ItemsSource="{Binding GearSets}" DisplayMemberPath="Name"
                                       SelectedItem="{Binding SelectedGearSet}" />
                             <Button Content="New set" Style="{StaticResource PillButton}" Command="{Binding NewGearSetCommand}" />
@@ -2124,7 +2164,7 @@
                             <StackPanel>
                                 <TextBlock Text="Import character" FontSize="14" Foreground="{StaticResource Gold}" />
                                 <TextBlock Text="In game: click Oracle on your character or the inspect window (or type /oracle, /oracle t for your target), press Ctrl+C, paste here. Makes a gear set and a talent set named after the character."
-                                           FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,6" />
+                                           FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,6" />
                                 <TextBox Style="{StaticResource MultiLineTextBox}" Height="90" FontSize="12" Tag="!WOWORACLE 1 …"
                                          Text="{Binding CharacterImportText, UpdateSourceTrigger=PropertyChanged}" />
                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
@@ -2228,7 +2268,7 @@
                             Visibility="{Binding ShowGearTotals, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Text="Gear totals" FontSize="16" Foreground="{StaticResource Gold}" />
-                            <TextBlock Text="Ratings are shown raw; the Calculator turns them into %." FontSize="11"
+                            <TextBlock Text="Ratings are shown raw; the Calculator turns them into %." FontSize="12"
                                        Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,8" />
                             <ItemsControl ItemsSource="{Binding GearTotals}">
                                 <ItemsControl.ItemTemplate>
@@ -2253,7 +2293,7 @@
                                     <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource PillButton}" Command="{Binding CloseUpgradesCommand}" />
                                     <TextBlock Text="{Binding UpgradeTitle}" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
                                 </DockPanel>
-                                <TextBlock Text="{Binding UpgradeWeights}" FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                <TextBlock Text="{Binding UpgradeWeights}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
                                 <WrapPanel Margin="0,8,0,4">
                                     <CheckBox Content="Raid" IsChecked="{Binding UpgradeRaid}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
                                     <CheckBox Content="Dungeon" IsChecked="{Binding UpgradeDungeon}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
@@ -2262,7 +2302,7 @@
                                 <TextBlock Text="Searching…" FontSize="12" Foreground="{StaticResource Dim}"
                                            Visibility="{Binding UpgradeBusy, Converter={StaticResource BoolToVis}}" />
                                 <TextBlock Text="{Binding UpgradeNote}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
-                                <TextBlock Text="Click to open · Equip puts it in this slot · hold Alt to compare" FontSize="11"
+                                <TextBlock Text="Click to open · Equip puts it in this slot · hold Alt to compare" FontSize="12"
                                            Foreground="{StaticResource Dim}" Opacity="0.8" Margin="0,2,0,6" />
                             </StackPanel>
                             <ScrollViewer x:Name="UpgradeList" VerticalScrollBarVisibility="Auto">
@@ -2289,7 +2329,7 @@
                                                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
                                                         <TextBlock Text="{Binding StatLine}" Foreground="{StaticResource Green}" FontSize="12" TextWrapping="Wrap" />
                                                         <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding LevelText}" Foreground="{StaticResource Dim}" FontSize="11" />
+                                                        <TextBlock Text="{Binding LevelText}" Foreground="{StaticResource Dim}" FontSize="12" />
                                                     </StackPanel>
                                                 </DockPanel>
                                             </Border>
@@ -2346,7 +2386,7 @@
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Title}" Foreground="{Binding TitleBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -2362,7 +2402,7 @@
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="11" />
+                                        <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="12" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -2377,7 +2417,7 @@
                                 <TextBlock Text="{Binding LootTitle}" FontSize="18" Foreground="{StaticResource Gold}" />
                                 <TextBlock Text="{Binding LootSubtitle}" FontSize="12" Foreground="{StaticResource Parchment}" />
                                 <TextBlock Text="Click opens · Shift+click adds to gear · Ctrl+click queues the recipe · hold Alt to compare. In the search box: ↑ ↓ / Tab for places, Ctrl+↑ ↓ for bosses. Drop data is Classic (CMaNGOS)."
-                                           FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                           FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
                             </StackPanel>
                             <ScrollViewer x:Name="LootList" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding LootSections}" Margin="0,0,14,0">
@@ -2410,7 +2450,7 @@
                                                                     </Border>
                                                                     <StackPanel VerticalAlignment="Center">
                                                                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                                                        <TextBlock Text="{Binding Summary}" Foreground="{StaticResource Dim}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                                        <TextBlock Text="{Binding Summary}" Foreground="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                                                         <TextBlock Text="{Binding StatText}" Foreground="{StaticResource Parchment}" FontSize="12" TextWrapping="Wrap"
                                                                                    Visibility="{Binding HasStatText, Converter={StaticResource BoolToVis}}" />
                                                                         <TextBlock Text="{Binding EffectText}" Foreground="{StaticResource Green}" FontSize="12" TextWrapping="Wrap"
@@ -2468,8 +2508,8 @@
                                     </ItemsPanelTemplate>
                                 </ListBox.ItemsPanel>
                                 <ListBoxItem Content="Both" ToolTip="Tales for both factions" />
-                                <ListBoxItem Content="Alliance" />
-                                <ListBoxItem Content="Horde" />
+                                <ListBoxItem Content="Alliance" Style="{StaticResource FactionChip}" Tag="#4A9BFF" ToolTip="Alliance tales" />
+                                <ListBoxItem Content="Horde" Style="{StaticResource FactionChip}" Tag="#E5483B" ToolTip="Horde tales" />
                             </ListBox>
                         </StackPanel>
                         <ListBox ItemsSource="{Binding Source={StaticResource ZonesByContinent}}" SelectedItem="{Binding SelectedJournalZone}"
@@ -2487,8 +2527,8 @@
                             </ListBox.GroupStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Levels}" FontSize="11" Foreground="{StaticResource Dim}"
+                                    <DockPanel Margin="0,0,12,0"> <!-- room for the overlay scroll bar -->
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Levels}" FontSize="12" Foreground="{StaticResource Dim}"
                                                    VerticalAlignment="Center" Margin="6,0,0,0" />
                                         <TextBlock Text="{Binding Zone}" FontSize="14" Foreground="{StaticResource Parchment}"
                                                    TextTrimming="CharacterEllipsis" />
@@ -2519,7 +2559,7 @@
 
                             <!-- Tales -->
                             <DockPanel Margin="0,22,0,2">
-                                <TextBlock DockPanel.Dock="Right" Text="The Oracle is listening…" FontSize="11" FontStyle="Italic"
+                                <TextBlock DockPanel.Dock="Right" Text="The Oracle is listening…" FontSize="12" FontStyle="Italic"
                                            Foreground="{StaticResource InkSoft}" VerticalAlignment="Bottom"
                                            Visibility="{Binding JournalBusy, Converter={StaticResource BoolToVis}}" />
                                 <TextBlock FontSize="19" Foreground="{StaticResource InkTitle}">
@@ -2537,8 +2577,8 @@
                                                 <Run Text="{Binding Title, Mode=OneWay}" />
                                                 <Run Text="{Binding Star, Mode=OneWay}" FontSize="12" Foreground="{StaticResource InkTheme}" />
                                             </TextBlock>
-                                            <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{StaticResource InkSoft}" Margin="0,2,0,0" />
-                                            <TextBlock Text="{Binding Themes}" FontSize="11" FontStyle="Italic" Foreground="{StaticResource InkTheme}"
+                                            <TextBlock Text="{Binding Meta}" FontSize="12" Foreground="{StaticResource InkSoft}" Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding Themes}" FontSize="12" FontStyle="Italic" Foreground="{StaticResource InkTheme}"
                                                        Margin="0,1,0,0" Visibility="{Binding HasThemes, Converter={StaticResource BoolToVis}}" />
                                             <TextBlock Text="{Binding Teaser}" FontSize="13" FontStyle="Italic" Foreground="{StaticResource Ink}"
                                                        TextWrapping="Wrap" Margin="0,7,0,0" LineHeight="19"
@@ -2578,7 +2618,7 @@
                                                                 <ControlTemplate TargetType="Button">
                                                                     <Border x:Name="Row" Background="Transparent" Padding="4,2" CornerRadius="2">
                                                                         <TextBlock FontSize="12" Foreground="{StaticResource Ink}">
-                                                                            <Run Text="{Binding Number, Mode=OneWay}" Foreground="{StaticResource InkSoft}" /><Run Text=".  " Foreground="{StaticResource InkSoft}" /><Run Text="{Binding Title, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Meta, Mode=OneWay}" FontSize="11" Foreground="{StaticResource InkSoft}" />
+                                                                            <Run Text="{Binding Number, Mode=OneWay}" Foreground="{StaticResource InkSoft}" /><Run Text=".  " Foreground="{StaticResource InkSoft}" /><Run Text="{Binding Title, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Meta, Mode=OneWay}" FontSize="12" Foreground="{StaticResource InkSoft}" />
                                                                         </TextBlock>
                                                                     </Border>
                                                                     <ControlTemplate.Triggers>
@@ -2648,8 +2688,8 @@
                                                            VerticalAlignment="Center" Margin="10,0,0,0" />
                                                 <StackPanel VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding StatLine}" Foreground="{StaticResource Dim}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding StatLine}" Foreground="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </DockPanel>
                                         </Border>
@@ -2699,7 +2739,8 @@
                             </ListBox.GroupStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Parchment}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Parchment}" TextTrimming="CharacterEllipsis"
+                                               Margin="0,0,12,0" />
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -2789,7 +2830,7 @@
                             <TextBlock DockPanel.Dock="Left" Text="{Binding SelectedMapZone.Name}" FontSize="14" Foreground="{StaticResource Gold}" />
                             <TextBlock DockPanel.Dock="Left" Text="{Binding MapCursorText}" FontSize="12" Foreground="{StaticResource Parchment}"
                                        Margin="12,1,0,0" VerticalAlignment="Center" />
-                            <TextBlock DockPanel.Dock="Right" Text="Wheel to zoom · drag to move" FontSize="11" Foreground="{StaticResource Dim}"
+                            <TextBlock DockPanel.Dock="Right" Text="Wheel to zoom · drag to move" FontSize="12" Foreground="{StaticResource Dim}"
                                        VerticalAlignment="Center" />
                         </DockPanel>
                     </Grid>
@@ -2825,7 +2866,7 @@
                                         <StackPanel>
                                             <TextBlock Text="{Binding Title}" Foreground="{Binding TitleBrush}" Opacity="{Binding TitleOpacity}"
                                                        FontSize="14" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                     </DockPanel>
                                 </DataTemplate>
@@ -2859,7 +2900,7 @@
                             <!-- Reminder -->
                             <StackPanel Grid.Row="1" Margin="0,10,0,10">
                                 <WrapPanel>
-                                    <TextBlock Text="Remind" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Text="Remind" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,8,0" />
                                     <TextBox Style="{StaticResource FilterTextBox}" Width="190" Padding="6,3" Tag="18:30, tomorrow 9:00, in 2h"
                                              Text="{Binding NoteWhen, UpdateSourceTrigger=PropertyChanged, Delay=250}">
                                         <TextBox.InputBindings>
@@ -2872,7 +2913,7 @@
                                     <Button Content="No reminder" Style="{StaticResource PillButton}" Margin="6,0,0,0" Command="{Binding QuickReminderCommand}" CommandParameter="clear" />
                                 </WrapPanel>
                                 <WrapPanel Margin="0,8,0,0">
-                                    <TextBlock Text="Repeat" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Text="Repeat" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,8,0" />
                                     <ComboBox Width="110" ItemsSource="{Binding RepeatChoices}" SelectedItem="{Binding NoteRepeat}" />
                                     <CheckBox Content="Done" IsChecked="{Binding NoteDone}" Margin="16,0,0,0" Foreground="{StaticResource Parchment}" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding NoteWhenHint}" FontSize="12" Foreground="{StaticResource Gold}" VerticalAlignment="Center" Margin="16,0,0,0" />
@@ -2885,7 +2926,7 @@
                             <DockPanel Grid.Row="3" Margin="0,10,0,0">
                                 <Button DockPanel.Dock="Right" Content="Delete" Style="{StaticResource PillButton}" Margin="6,0,0,0" Command="{Binding DeleteNoteCommand}" />
                                 <Button DockPanel.Dock="Right" Content="Save (Ctrl+S)" Style="{StaticResource PillButton}" Command="{Binding SaveNoteCommand}" />
-                                <TextBlock Text="Saved automatically when you switch note or page." FontSize="11" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
+                                <TextBlock Text="Saved automatically when you switch note or page." FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
                             </DockPanel>
                         </Grid>
                     </Grid>
@@ -2913,37 +2954,37 @@
                         <!-- Character: class, race, level; then gear, talents, target -->
                         <WrapPanel Margin="0,10,0,0">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBlock Text="Class" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Text="Class" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <ComboBox Width="120" ItemsSource="{Binding TalentClasses}" DisplayMemberPath="Name"
                                           SelectedItem="{Binding CalcClass}" />
-                                <TextBlock Text="Race" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                <TextBlock Text="Race" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
                                 <ComboBox Width="120" ItemsSource="{Binding Races}" DisplayMemberPath="Name"
                                           SelectedItem="{Binding CalcRace}" />
-                                <TextBlock Text="Level" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                <TextBlock Text="Level" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
                                 <TextBox Style="{StaticResource FilterTextBox}" Width="50" Padding="6,3"
                                          Text="{Binding CalcLevel, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBlock Text="Gear" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="18,0,6,0" />
+                                <TextBlock Text="Gear" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="18,0,6,0" />
                                 <ComboBox Width="230" ItemsSource="{Binding CalcGearChoices}" DisplayMemberPath="Name"
                                           SelectedItem="{Binding CalcGearSet}" />
-                                <TextBlock Text="Talents" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                <TextBlock Text="Talents" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
                                 <ComboBox Width="230" ItemsSource="{Binding CalcTalentSets}" DisplayMemberPath="Name"
                                           SelectedItem="{Binding SelectedCalcTalentSet}" />
-                                <TextBlock Text="Target" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                <TextBlock Text="Target" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,6,0" />
                                 <ComboBox Width="140" ItemsSource="{Binding TargetOptions}" SelectedIndex="{Binding TargetLevelDiff}" />
                             </StackPanel>
                         </WrapPanel>
 
                         <!-- Saved calculations -->
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <TextBlock Text="Saved" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
+                            <TextBlock Text="Saved" FontSize="13" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
                             <ComboBox Width="260" Margin="8,0,6,0" ItemsSource="{Binding Snapshots}" SelectedItem="{Binding SelectedSnapshot}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Name}" />
-                                            <TextBlock Text="{Binding SavedText}" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Text="{Binding SavedText}" FontSize="12" Foreground="{StaticResource Dim}"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </DataTemplate>
@@ -3009,7 +3050,7 @@
                                     <ItemsControl ItemsSource="{Binding CalcNotes}" Margin="0,8,0,0">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                                <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -3021,7 +3062,7 @@
                                     Visibility="{Binding HasWeapons, Converter={StaticResource BoolToVis}}">
                                 <StackPanel>
                                     <TextBlock Text="Weapons" FontSize="16" Foreground="{StaticResource Gold}" />
-                                    <TextBlock Text="White hits vs the target; no dodge, parry or glancing yet." FontSize="11"
+                                    <TextBlock Text="White hits vs the target; no dodge, parry or glancing yet." FontSize="12"
                                                Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
                                     <ItemsControl ItemsSource="{Binding WeaponLines}" Margin="0,2,0,0">
                                         <ItemsControl.ItemTemplate>
@@ -3049,28 +3090,33 @@
                             <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="1"
                                     CornerRadius="3" Padding="14,12" Margin="0,10,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="Naked stats" FontSize="16" Foreground="{StaticResource Gold}" />
-                                    <TextBlock Text="From your character sheet with nothing equipped, saved per class and race. Leave blank to use an estimate."
-                                               FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,8" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Copy recorded" Style="{StaticResource PillButton}" Padding="8,2"
+                                                Command="{Binding CopyBaseStatsCommand}" VerticalAlignment="Center"
+                                                ToolTip="Every class, race and level the addon recorded, as CSV (str, agi, sta, int, spi; naked health and mana)" />
+                                        <TextBlock Text="Naked stats" FontSize="16" Foreground="{StaticResource Gold}" />
+                                    </DockPanel>
+                                    <TextBlock Text="From your character sheet with nothing equipped, saved per class and race. Leave blank to use the base stats the addon recorded in game for this class, race and level (or an estimate)."
+                                               FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,8" />
                                     <UniformGrid Columns="5">
                                         <StackPanel Margin="0,0,4,0">
-                                            <TextBlock Text="Str" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Text="Str" FontSize="13" Foreground="{StaticResource Dim}" />
                                             <TextBox Style="{StaticResource FilterTextBox}" Padding="4,3" Text="{Binding NakedStr, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,4,0">
-                                            <TextBlock Text="Agi" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Text="Agi" FontSize="13" Foreground="{StaticResource Dim}" />
                                             <TextBox Style="{StaticResource FilterTextBox}" Padding="4,3" Text="{Binding NakedAgi, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,4,0">
-                                            <TextBlock Text="Sta" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Text="Sta" FontSize="13" Foreground="{StaticResource Dim}" />
                                             <TextBox Style="{StaticResource FilterTextBox}" Padding="4,3" Text="{Binding NakedSta, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,4,0">
-                                            <TextBlock Text="Int" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Text="Int" FontSize="13" Foreground="{StaticResource Dim}" />
                                             <TextBox Style="{StaticResource FilterTextBox}" Padding="4,3" Text="{Binding NakedInt, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                         </StackPanel>
                                         <StackPanel>
-                                            <TextBlock Text="Spi" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Text="Spi" FontSize="13" Foreground="{StaticResource Dim}" />
                                             <TextBox Style="{StaticResource FilterTextBox}" Padding="4,3" Text="{Binding NakedSpi, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
                                         </StackPanel>
                                     </UniformGrid>
@@ -3116,7 +3162,7 @@
                                             <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="26" Height="26" Margin="0,0,8,0">
                                                 <local:GameIcon FileId="{Binding IconId}" Size="medium" />
                                             </Border>
-                                            <TextBlock Text="{Binding Meta}" DockPanel.Dock="Right" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Text="{Binding Meta}" DockPanel.Dock="Right" FontSize="12" Foreground="{StaticResource Dim}"
                                                        VerticalAlignment="Center" />
                                             <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Parchment}"
                                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -3139,7 +3185,7 @@
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="{Binding Name}" />
-                                                        <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="11"
+                                                        <TextBlock Text="{Binding Meta}" Foreground="{StaticResource Dim}" FontSize="12"
                                                                    Margin="8,0,0,0" VerticalAlignment="Center" />
                                                     </StackPanel>
                                                 </DataTemplate>
@@ -3174,11 +3220,11 @@
                                                 <ColumnDefinition Width="80" />
                                                 <ColumnDefinition Width="80" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Race" FontSize="11" Foreground="{StaticResource Dim}" />
-                                            <TextBlock Grid.Column="1" Text="Per cast" FontSize="11" Foreground="{StaticResource Dim}" />
-                                            <TextBlock Grid.Column="2" Text="Per sec" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Text="Race" FontSize="12" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="1" Text="Per cast" FontSize="12" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="2" Text="Per sec" FontSize="12" Foreground="{StaticResource Dim}"
                                                        ToolTip="DPS for damage spells, HPS for heals" />
-                                            <TextBlock Grid.Column="3" Text="Crit" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="3" Text="Crit" FontSize="12" Foreground="{StaticResource Dim}" />
                                         </Grid>
                                         <ItemsControl ItemsSource="{Binding RaceRows}">
                                             <ItemsControl.ItemTemplate>
@@ -3208,7 +3254,7 @@
                                     <StackPanel Margin="0,12,0,0" Visibility="{Binding HasSpellRows, Converter={StaticResource BoolToVis}}">
                                         <DockPanel Margin="0,0,0,4">
                                             <CheckBox DockPanel.Dock="Right" IsChecked="{Binding CompareRanks}" Content="Ranks of this spell"
-                                                      Foreground="{StaticResource Dim}" FontSize="11" VerticalAlignment="Center"
+                                                      Foreground="{StaticResource Dim}" FontSize="12" VerticalAlignment="Center"
                                                       ToolTip="Compare the ranks of the picked spell instead of all your spells" />
                                             <TextBlock Text="{Binding SpellCompareTitle}" FontSize="12" Foreground="{StaticResource Gold}" />
                                         </DockPanel>
@@ -3220,13 +3266,13 @@
                                                 <ColumnDefinition Width="64" />
                                                 <ColumnDefinition Width="80" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Spell" FontSize="11" Foreground="{StaticResource Dim}" />
-                                            <TextBlock Grid.Column="1" Text="Per cast" FontSize="11" Foreground="{StaticResource Dim}" />
-                                            <TextBlock Grid.Column="2" Text="Per sec" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Text="Spell" FontSize="12" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="1" Text="Per cast" FontSize="12" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="2" Text="Per sec" FontSize="12" Foreground="{StaticResource Dim}"
                                                        ToolTip="DPS for damage spells, HPS for heals (cast time or global cooldown; over the duration for DoTs and HoTs)" />
-                                            <TextBlock Grid.Column="3" Text="Per mana" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Grid.Column="3" Text="Per mana" FontSize="12" Foreground="{StaticResource Dim}"
                                                        ToolTip="Per point of mana, rage or energy" />
-                                            <TextBlock Grid.Column="4" Text="+100 power" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock Grid.Column="4" Text="+100 power" FontSize="12" Foreground="{StaticResource Dim}"
                                                        ToolTip="What 100 more spell power, healing power or attack power (whichever the spell uses) adds per cast: how well it scales" />
                                         </Grid>
                                         <ItemsControl ItemsSource="{Binding SpellRows}">
@@ -3320,7 +3366,7 @@
                                             </ControlTemplate>
                                         </Button.Template>
                                         <DockPanel>
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Tag}" FontSize="11" Foreground="{StaticResource Dim}"
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Tag}" FontSize="12" Foreground="{StaticResource Dim}"
                                                        VerticalAlignment="Center" Margin="8,0,0,0" />
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Label}" FontSize="13" TextTrimming="CharacterEllipsis">
@@ -3354,7 +3400,7 @@
             <ContentControl Content="{Binding HoverCard}" ContentTemplate="{StaticResource ItemCard}" IsHitTestVisible="False" />
         </Popup>
 
-        <Popup x:Name="TalentPopup" Placement="Right" HorizontalOffset="8" StaysOpen="True" AllowsTransparency="True"
+        <Popup x:Name="TalentPopup" Placement="Right" HorizontalOffset="10" VerticalOffset="-4" StaysOpen="True" AllowsTransparency="True"
                IsHitTestVisible="False" Focusable="False">
             <ContentControl Content="{Binding TalentDetail}" ContentTemplate="{StaticResource TalentCard}" IsHitTestVisible="False" />
         </Popup>
@@ -3366,7 +3412,7 @@
                     Background="{StaticResource PanelRaised}" BorderBrush="{StaticResource Edge}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Text="{Binding Title}" Foreground="{Binding TitleBrush}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource Dim}" FontSize="11" Margin="0,1,0,0" />
+                    <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,1,0,0" />
                     <TextBlock Text="{Binding Message}" Foreground="{StaticResource Parchment}" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"
                                Visibility="{Binding HasMessage, Converter={StaticResource BoolToVis}}" />
                     <ItemsControl ItemsSource="{Binding Sections}">
@@ -3492,7 +3538,7 @@
                     </Button>
                 </Grid>
                 <TextBlock DockPanel.Dock="Top" Text="What changed since the app opened: game data, and what the addon brought in from the game."
-                           FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                           FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,0,0,6" />
                 <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Divider}" Margin="0,0,0,6" />
                 <Grid>
                     <TextBlock Text="Nothing yet." FontSize="12" Foreground="{StaticResource Dim}" FontStyle="Italic"
@@ -3506,7 +3552,7 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Time}" FontSize="11" Foreground="{StaticResource Dim}"
+                                        <TextBlock Text="{Binding Time}" FontSize="12" Foreground="{StaticResource Dim}"
                                                    Margin="0,1,8,0" Opacity="0.8" />
                                         <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="12" TextWrapping="Wrap">
                                             <TextBlock.Style>
@@ -3571,7 +3617,7 @@
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Status}" FontSize="12" Foreground="{StaticResource Dim}"
                            TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding BuildLabel}" FontSize="11" Foreground="{StaticResource Dim}" Opacity="0.7"
+                <TextBlock Text="{Binding BuildLabel}" FontSize="12" Foreground="{StaticResource Dim}" Opacity="0.7"
                            ToolTip="Free and fan-made. Not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft is a trademark of Blizzard Entertainment, Inc. Game data and art from the game client via wago.tools; item sources from CMaNGOS." />
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">

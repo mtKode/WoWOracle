@@ -84,33 +84,36 @@ public partial class TalentTreeView(TalentTree tree) : ObservableObject
 /// <summary>Prerequisite arrow between two talents, drawn behind the squares. Lit once the prerequisite is met.</summary>
 public sealed record TalentArrow(Geometry Line, Geometry Head, bool Active)
 {
-    // Must match the tree grid in MainWindow.xaml: 96 px per slot, 84 px squares.
-    private const double Slot = 96, Half = 42, HeadSize = 7;
+    // Must match the talent slot in MainWindow.xaml (TalentTreeBody): 96 px slots, a 58 px icon whose top is 9 px below
+    // the slot's top (so its centre is 38 px down), the name underneath down to the slot's bottom.
+    private const double Slot = 96, IconTop = 9, IconHalf = 29, HeadSize = 7;
 
     public static TalentArrow Between(TalentCell from, TalentCell to, bool active)
     {
         double Cx(TalentCell c) => c.Column * Slot + Slot / 2;
-        double Cy(TalentCell c) => c.Tier * Slot + Slot / 2;
+        double IconY(TalentCell c) => c.Tier * Slot + IconTop + IconHalf;      // icon centre
+        double Top(TalentCell c) => c.Tier * Slot + IconTop - 1;              // just above the icon
+        double Below(TalentCell c) => c.Tier * Slot + Slot + 3;               // under the name (it may run 3 px past the slot)
 
         var points = new List<(double X, double Y)>();
         if (from.Tier == to.Tier)
         {
             var dir = Math.Sign(to.Column - from.Column);
-            points.Add((Cx(from) + dir * Half, Cy(from)));
-            points.Add((Cx(to) - dir * Half, Cy(to)));
+            points.Add((Cx(from) + dir * (IconHalf + 1), IconY(from)));
+            points.Add((Cx(to) - dir * (IconHalf + 1), IconY(to)));
         }
         else if (from.Column == to.Column)
         {
-            points.Add((Cx(from), Cy(from) + Half));
-            points.Add((Cx(to), Cy(to) - Half));
+            points.Add((Cx(from), Below(from)));
+            points.Add((Cx(to), Top(to)));
         }
         else
         {
-            // Across first, then down into the target.
+            // Across from the icon's side first, then down into the target.
             var dir = Math.Sign(to.Column - from.Column);
-            points.Add((Cx(from) + dir * Half, Cy(from)));
-            points.Add((Cx(to), Cy(from)));
-            points.Add((Cx(to), Cy(to) - Half));
+            points.Add((Cx(from) + dir * (IconHalf + 1), IconY(from)));
+            points.Add((Cx(to), IconY(from)));
+            points.Add((Cx(to), Top(to)));
         }
 
         var (ex, ey) = points[^1];

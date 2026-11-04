@@ -338,11 +338,24 @@ public partial class MainWindow : FluentWindow
     /// <summary>Hovering a talent shows its ranks in the side panel.</summary>
     private void OnTalentMouseEnter(object sender, MouseEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: TalentCell cell } square) return;
+        if (sender is not FrameworkElement { DataContext: TalentCell cell } slot) return;
         _vm.HoverTalent(cell);
         TalentPopup.IsOpen = false; // re-open so it moves to the new square
-        TalentPopup.PlacementTarget = square;
+        // Next to the icon itself (the slot is wider than the icon, so the card would float off to the side).
+        TalentPopup.PlacementTarget = FindNamed(slot, "Cell") ?? slot;
         TalentPopup.IsOpen = true;
+    }
+
+    /// <summary>The first element with this x:Name inside a template's visual tree.</summary>
+    private static FrameworkElement? FindNamed(DependencyObject root, string name)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement { Name: var n } element && n == name) return element;
+            if (FindNamed(child, name) is { } found) return found;
+        }
+        return null;
     }
 
     /// <summary>Gear page "Enchant": open the picker under the button, filter box focused.</summary>

@@ -84,7 +84,8 @@ local function inRanges(r, id)
     return false
 end
 
--- kind: "npcs", "placed" (NPCs with a known spot), "objects", "quests", "vendors", "sourced" (items with a known source). Nil when the app hasn't
+-- kind: "npcs", "placed" (NPCs with a known spot), "objects", "quests", "vendors", "sourced" (items with a known source),
+-- "items" (items the app has data for). Nil when the app hasn't
 -- written Known.lua yet: then nothing counts as new and nothing is saved.
 local function isKnown(kind, id)
     if type(WoWOracleKnown) ~= "table" or type(id) ~= "number" then return nil end
@@ -98,7 +99,7 @@ local function hasKnownList() return type(WoWOracleKnown) == "table" end
 local function knownSummary()
     if not hasKnownList() then return "no known-data list yet (the app writes Known.lua when it starts)" end
     local parts = {}
-    for _, kind in ipairs({ "npcs", "placed", "objects", "quests", "vendors", "sourced" }) do
+    for _, kind in ipairs({ "npcs", "placed", "objects", "quests", "vendors", "sourced", "items" }) do
         isKnown(kind, 0)
         parts[#parts + 1] = ("%s %d ranges"):format(kind, #knownSets[kind].lo)
     end
@@ -231,6 +232,33 @@ local function itemDataLine(id)
     return ("itemdata=%d;%d;%d;%d;%d;%d;%d;%s;%d;%d;%d;%d;%d;%d;%s;%s"):format(
         id, quality or 1, ilvl or 0, reqLevel or 0, classID or 0, subclassID or 0, inv, tostring(icon or 0), bind or 0,
         sell or 0, armor or 0, low, high, delay, statText(stats), clean(name))
+end
+
+-- Items the app's data doesn't have (Known.lua "items"): their client data is saved once, so the app can show them
+-- (names, icons, stats). Seen in bags, the bank, profession windows, loot and vendors.
+local waitingItems = {}
+
+local function saveItem(id, line)
+    WoWOracleDB = WoWOracleDB or {}
+    WoWOracleDB.seen = WoWOracleDB.seen or {}
+    WoWOracleDB.seen.items = WoWOracleDB.seen.items or {}
+    WoWOracleDB.seen.items[id] = { text = "!WOWORACLE-ITEM 1\n" .. line .. "\n!END", time = time() }
+end
+
+local function noteItem(id)
+    if type(id) ~= "number" or isKnown("items", id) ~= false then return end
+    local saved = WoWOracleDB and WoWOracleDB.seen and WoWOracleDB.seen.items
+    if saved and saved[id] then return end
+    local ok, line = pcall(itemDataLine, id) -- never let item data break the capture that called this
+    if ok and line then saveItem(id, line); return end
+    -- Not in the client's cache yet: asking loads it; try again in a moment.
+    if waitingItems[id] then return end
+    waitingItems[id] = true
+    C_Timer.After(3, function()
+        waitingItems[id] = nil
+        local done, later = pcall(itemDataLine, id)
+        if done and later then saveItem(id, later) end
+    end)
 end
 
 -- Stats the equipped copy has beyond the plain item (random suffix like "of the Beast").
@@ -988,6 +1016,11 @@ local function readOpenRecipes()
             if kind and kind ~= "header" and kind ~= "subheader" then
                 local id = spellIdOfLink(try(GetTradeSkillRecipeLink, i))
                 if id then found[#found + 1] = id end
+                -- What it makes and needs, for items the app has no data for yet.
+                noteItem(itemIdOf(try(GetTradeSkillItemLink, i)))
+                for r = 1, (try(GetTradeSkillNumReagents, i)) or 0 do
+                    noteItem(itemIdOf(try(GetTradeSkillReagentItemLink, i, r)))
+                end
             end
         end
     end
@@ -1032,7 +1065,10 @@ local function readBags(bags)
     for _, bag in ipairs(bags) do
         for slot = 1, containerSlots(bag) do
             local id, count = containerItem(bag, slot)
-            if id then items[id] = (items[id] or 0) + (count or 1) end
+            if id then
+                items[id] = (items[id] or 0) + (count or 1)
+                noteItem(id)
+            end
         end
     end
     return items
@@ -1081,7 +1117,56 @@ local function saveCharacter()
     store[key] = { recipes = charState.recipes, bank = charState.bank, text = charText() }
 end
 
+-- ------------------------------------------------------------------------------------------------
+-- Base stats per class, race and level (what a character has with nothing on, no buffs): the game's own numbers,
+-- which nobody publishes reliably. Saved for every character you log in, at every level you reach, in
+-- WoWOracleDB.base["CLASS:RACE:LEVEL"]; the app uses them in the calculator instead of its estimate.
+-- base = the paper doll's stat minus every bonus (gear, buffs) - the same split the character sheet tooltip shows.
+-- ------------------------------------------------------------------------------------------------
+
+local function wearsNothing()
+    for slot = 1, 19 do
+        if slot ~= 4 and slot ~= 19 and GetInventoryItemID("player", slot) then return false end -- shirt/tabard are fine
+    end
+    return true
+end
+
+local function recordBaseStats()
+    local _, _, classId = UnitClass("player")
+    local _, _, raceId = UnitRace("player")
+    local level = UnitLevel("player")
+    if not classId or not raceId or not level or level < 1 then return end
+    local base, bonus = {}, false
+    for i = 1, 5 do
+        local stat, _, posBuff, negBuff = UnitStat("player", i)
+        if not stat then return end
+        base[i] = stat - (posBuff or 0) - (negBuff or 0)
+        if (posBuff or 0) ~= 0 or (negBuff or 0) ~= 0 then bonus = true end
+    end
+    -- Health and mana only mean "base" with nothing on and no bonuses; the app only uses them then.
+    local naked = wearsNothing() and not bonus
+    local _, build = GetBuildInfo()
+    WoWOracleDB = WoWOracleDB or {}
+    WoWOracleDB.base = WoWOracleDB.base or {}
+    local key = ("%d:%d:%d"):format(classId, raceId, level)
+    local old = WoWOracleDB.base[key]
+    if old and old.naked and not naked then return end -- keep the better (naked) snapshot
+    WoWOracleDB.base[key] = {
+        naked = naked,
+        text = table.concat({
+            "!WOWORACLE-BASE 1",
+            ("base=%d;%d;%d;%d;%d;%d;%d;%d"):format(classId, raceId, level, base[1], base[2], base[3], base[4], base[5]),
+            ("vitals=%d;%d;%d"):format(UnitHealthMax("player") or 0, UnitPowerMax("player", 0) or 0, naked and 1 or 0),
+            "who=" .. clean(select(2, UnitClass("player"))) .. ";" .. clean(select(2, UnitRace("player"))),
+            "build=" .. clean(build),
+            "time=" .. time(),
+            "!END",
+        }, "\n"),
+    }
+end
+
 local function refreshCharacter(what)
+    if what == "all" then pcall(recordBaseStats) end
     if what == "skills" or what == "all" then charState.skills = readSkills() end
     if what == "bags" or what == "all" then charState.bags = readBags(BAG_IDS) end
     if what == "bank" then charState.bank = readBags(BANK_IDS) end
@@ -1259,6 +1344,7 @@ local function captureVendor()
     for i = 1, (try(GetMerchantNumItems)) or 0 do
         local itemId, price, stack, available, extended = merchantItem(i)
         if itemId then
+            noteItem(itemId)
             items[#items + 1] = ("%d;%d;%d;%d;%d"):format(itemId, price, stack, available, extended)
             if isKnown("sourced", itemId) == false then worth = true end
         end
@@ -1326,6 +1412,7 @@ local function onLootOpened()
     local bySource = {} -- guid -> { [itemId] = count }
     for slot = 1, (try(GetNumLootItems)) or 0 do
         local itemId = itemIdOf(try(GetLootSlotLink, slot))
+        noteItem(itemId)
         local _, _, quantity = try(GetLootSlotInfo, slot)
         for guid, n in pairs(slotSources(slot)) do
             bySource[guid] = bySource[guid] or {}
@@ -1373,7 +1460,7 @@ end
 
 local function seenCounts()
     local counts = {}
-    for _, kind in ipairs({ "npcs", "vendors", "loot" }) do
+    for _, kind in ipairs({ "npcs", "vendors", "loot", "items" }) do
         local n = 0
         for _ in pairs(seenStore(kind)) do n = n + 1 end
         counts[kind] = n
@@ -1421,6 +1508,10 @@ events:SetScript("OnEvent", function(_, event, name, extra)
     elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_TALENT_UPDATE"
         or event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_LEVEL_UP" then
         selfChanged()
+        -- New level: its stats arrive a moment later. Gear off: the naked snapshot (health and mana too).
+        if event == "PLAYER_LEVEL_UP" or event == "PLAYER_EQUIPMENT_CHANGED" then
+            C_Timer.After(event == "PLAYER_LEVEL_UP" and 3 or 1, function() pcall(recordBaseStats) end)
+        end
     elseif event == "SKILL_LINES_CHANGED" then
         pcall(refreshCharacter, "skills")
     elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" or event == "TRADE_SKILL_LIST_UPDATE"
@@ -1463,8 +1554,19 @@ SlashCmdList.WOWORACLE = function(msg)
         say("saved quests cleared (the app keeps the ones it already read).")
     elseif msg == "seen" then
         local c = seenCounts()
-        say(("new to the app: %d NPCs, %d vendors, %d loot sources (read on start, after /reload or logout)."):format(c.npcs, c.vendors, c.loot))
+        say(("new to the app: %d NPCs, %d vendors, %d loot sources, %d items (read on start, after /reload or logout)."):format(c.npcs, c.vendors, c.loot, c.items))
         say(knownSummary())
+    elseif msg == "base" then
+        pcall(recordBaseStats)
+        local n = 0
+        for _ in pairs(WoWOracleDB.base or {}) do n = n + 1 end
+        local parts = {}
+        for i = 1, 5 do
+            local stat, _, posBuff, negBuff = UnitStat("player", i)
+            parts[#parts + 1] = tostring((stat or 0) - (posBuff or 0) - (negBuff or 0))
+        end
+        say(("base stats now (str agi sta int spi): %s. Saved for %d class/race/level combinations%s."):format(
+            table.concat(parts, " "), n, wearsNothing() and " (naked: health and mana too)" or ""))
     elseif msg == "seen clear" then
         WoWOracleDB.seen = {}
         say("saved NPCs, vendors and loot cleared (the app keeps what it already read).")
@@ -1477,6 +1579,6 @@ SlashCmdList.WOWORACLE = function(msg)
     elseif msg == "talents" then
         if captureTalentLayout(false) == 0 then say("couldn't read the talent tree.") end
     else
-        say("/oracle (you), /oracle t (inspect your target), /oracle sync (save now for the app), /oracle talents, /oracle quests [clear], /oracle seen [clear], /oracle debug")
+        say("/oracle (you), /oracle t (inspect your target), /oracle sync (save now for the app), /oracle talents, /oracle quests [clear], /oracle seen [clear], /oracle base, /oracle debug")
     end
 end

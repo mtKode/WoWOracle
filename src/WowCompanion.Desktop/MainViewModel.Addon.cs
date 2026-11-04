@@ -52,6 +52,28 @@ public partial class MainViewModel
         }
     }
 
+    /// <summary>"!WOWORACLE-ITEM 1" blocks: one itemdata= line each, kept with the other learned items.</summary>
+    private void LearnAddonItems(IEnumerable<string> addonTexts)
+    {
+        try
+        {
+            var items = addonTexts
+                .SelectMany(text => AddonSavedData.Blocks(text, "!WOWORACLE-ITEM"))
+                .SelectMany(block => block.Split('\n'))
+                .Select(line => line.Trim('\r', ' '))
+                .Where(line => line.StartsWith("itemdata=", StringComparison.Ordinal))
+                .Select(line => LearnedItem.Parse(line["itemdata=".Length..]))
+                .OfType<LearnedItem>()
+                .DistinctBy(i => i.Id)
+                .ToList();
+            if (items.Count > 0) _learnedItems.Save(items);
+        }
+        catch (Exception)
+        {
+            // addon data is a bonus
+        }
+    }
+
     private QuestInjectResult InjectLearnedQuests(string gameDbPath)
     {
         try { return LearnedQuestStore.InjectInto(gameDbPath, _learnedQuests.All()); }
@@ -94,7 +116,28 @@ public partial class MainViewModel
     /// <summary>What one pass over the addon's saved files brought in (worked out off the UI thread).</summary>
     private sealed record AddonPassResult(
         List<string> Texts, int NewQuests, int Items, QuestInjectResult Quests, int NewSightings, SeenInjectResult Sightings,
-        List<string> TalentClasses, int ClientBuild, KnownIdsResult Known);
+        List<string> TalentClasses, int ClientBuild, KnownIdsResult Known)
+    {
+        /// <summary>Class/race/level base stat rows recorded for the first time.</summary>
+        public int NewBaseStats { get; init; }
+    }
+
+    private readonly BaseStatsStore _baseStats = new(paths.UserDbPath);
+
+    /// <summary>"!WOWORACLE-BASE 1" blocks: base stats per class, race and level. Returns how many were new.</summary>
+    private int LearnBaseStats(IEnumerable<string> addonTexts)
+    {
+        try
+        {
+            var rows = addonTexts.SelectMany(t => AddonSavedData.Blocks(t, BaseStatRow.Marker))
+                .Select(BaseStatRow.Parse).OfType<BaseStatRow>().ToList();
+            return rows.Count == 0 ? 0 : _baseStats.Save(rows);
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
 
     // One pass at a time: start-up and the file watcher both write to the game database.
     private readonly SemaphoreSlim _addonPassLock = new(1, 1);
@@ -107,10 +150,15 @@ public partial class MainViewModel
     private AddonPassResult AddonPass(string gameDbPath, string version, bool talents)
     {
         var texts = ReadAddonFiles();
+        var newBase = LearnBaseStats(texts); // user data only: works before the game data is there
         if (gameDbPath.Length == 0)
-            return new AddonPassResult(texts, 0, 0, new QuestInjectResult([], []), 0, new SeenInjectResult(0, 0, 0, 0, 0, 0), [], 0, KnownIdsResult.None);
+            return new AddonPassResult(texts, 0, 0, new QuestInjectResult([], []), 0, new SeenInjectResult(0, 0, 0, 0, 0, 0), [], 0, KnownIdsResult.None)
+            {
+                NewBaseStats = newBase,
+            };
 
         var newQuests = LearnAddonQuests(texts);
+        LearnAddonItems(texts); // items the data lacks, seen in bags, profession windows, loot and vendors
         var items = InjectLearnedItems(gameDbPath); // items from character imports and quest rewards
         var quests = InjectLearnedQuests(gameDbPath);
         var newSightings = LearnAddonSightings(texts);
@@ -119,7 +167,10 @@ public partial class MainViewModel
         // After the gaps are filled, so the addon doesn't record them again; only rebuilt when something changed.
         var changed = items > 0 || quests.Added.Count + quests.Updated.Count > 0 || sightings.Any;
         var known = WriteKnownIds(gameDbPath, force: changed);
-        return new AddonPassResult(texts, newQuests, items, quests, newSightings, sightings, talentTrees.Classes, talentTrees.Build, known);
+        return new AddonPassResult(texts, newQuests, items, quests, newSightings, sightings, talentTrees.Classes, talentTrees.Build, known)
+        {
+            NewBaseStats = newBase,
+        };
     }
 
     /// <summary>Start-up: the addon pass in the background, then the planner and the file watcher.</summary>
@@ -154,6 +205,11 @@ public partial class MainViewModel
         if (r.TalentClasses.Count > 0)
             Log($"Talent trees from the game client (build {r.ClientBuild}, newer than {TalentOverlay.BuildNumber(version)}): {string.Join(", ", r.TalentClasses.Order())}.", "addon");
         var sightings = ReportSightings(r.NewSightings, r.Sightings);
+        if (r.NewBaseStats > 0)
+        {
+            Log($"Base stats from the game: {Plural(r.NewBaseStats, "new class/race/level")} recorded (the Calculator uses them instead of its estimate).", "addon");
+            if (_characterLoaded) Recalculate();
+        }
         ReportKnownIds(r.Known);
 
         var parts = new List<string>();

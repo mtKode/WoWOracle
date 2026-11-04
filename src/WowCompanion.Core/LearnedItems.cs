@@ -94,12 +94,22 @@ public sealed class LearnedItemStore(string userDatabasePath)
 
         using var exists = connection.CreateCommand();
         exists.Transaction = transaction;
-        exists.CommandText = "SELECT 1 FROM items WHERE id = $id";
+        // Placeholders (crafted items named after their recipe until real data comes) give way to learned data.
+        var hasPlaceholders = TableExists(connection, transaction, "placeholder_items");
+        exists.CommandText = hasPlaceholders
+            ? "SELECT 1 FROM items WHERE id = $id AND id NOT IN (SELECT id FROM placeholder_items)"
+            : "SELECT 1 FROM items WHERE id = $id";
         var existsId = exists.Parameters.Add("$id", SqliteType.Integer);
 
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
-        insert.CommandText = """
+        insert.CommandText = (hasPlaceholders ? """
+            INSERT INTO items_fts (items_fts, rowid, name, description)
+                SELECT 'delete', id, name, description FROM items WHERE id = $id AND id IN (SELECT id FROM placeholder_items);
+            DELETE FROM items WHERE id = $id AND id IN (SELECT id FROM placeholder_items);
+            DELETE FROM placeholder_items WHERE id = $id;
+
+            """ : "") + """
             INSERT INTO items (id, name, description, quality, item_level, required_level, class_id, subclass_id,
                                inventory_type, bonding, sell_price, buy_price, stack_size, stats, stats_raw,
                                delay_ms, dmg_min, dmg_max, armor, icon_file_id)
@@ -136,5 +146,14 @@ public sealed class LearnedItemStore(string userDatabasePath)
         }
         transaction.Commit();
         return added;
+    }
+
+    private static bool TableExists(SqliteConnection connection, SqliteTransaction transaction, string table)
+    {
+        using var c = connection.CreateCommand();
+        c.Transaction = transaction;
+        c.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $t";
+        c.Parameters.AddWithValue("$t", table);
+        return c.ExecuteScalar() is not null;
     }
 }

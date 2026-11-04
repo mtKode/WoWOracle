@@ -46,6 +46,12 @@ public partial class MainViewModel
     [ObservableProperty] private string _planSummary = "";
     [ObservableProperty] private string _planCharacterNote = "";
     [ObservableProperty] private bool _planBusy;
+    /// <summary>Only the options that matter for the picked profession are shown (and used).</summary>
+    [ObservableProperty] private bool _planHasSubParts = true;
+    [ObservableProperty] private bool _planUsesBars;
+    /// <summary>Characters synced by the addon; without them the box is replaced by a hint.</summary>
+    public bool HasPlanCharacters => _characters.Count > 0;
+    public bool NoPlanCharacters => !HasPlanCharacters;
     public bool HasPlanSubCrafts => PlanSubCrafts.Count > 0;
     public bool HasPlanNotes => PlanNotes.Count > 0;
 
@@ -60,7 +66,7 @@ public partial class MainViewModel
         if (!_plannerReady)
         {
             _plannerReady = true;
-            _manualHave = ParseHave(_talentBuilds.GetSetting("craftplan_have"));
+            _manualHave = LoadHave();
             PlanVendorRecipes = _talentBuilds.GetSetting("craftplan_vendor") != "0";
             PlanDropRecipes = _talentBuilds.GetSetting("craftplan_drop") == "1";
             PlanSmelt = _talentBuilds.GetSetting("craftplan_smelt") == "1";
@@ -69,6 +75,7 @@ public partial class MainViewModel
             PlanToText = _talentBuilds.GetSetting("craftplan_to") ?? "75";
         }
         PlanProfession = PlanProfessions.Contains(previous) ? previous : PlanProfessions.FirstOrDefault() ?? "";
+        RefreshPlanOptions(); // a new game database may change what the profession uses
         LoadCharacters(addonTexts, log: false);
         QueuePlan();
     }
@@ -87,6 +94,8 @@ public partial class MainViewModel
         PlanCharacter = PlanCharacters.Contains(chosen) && chosen != NoCharacter ? chosen
             : remembered is not null && PlanCharacters.Contains(remembered) ? remembered
             : _characters.FirstOrDefault()?.Name ?? NoCharacter;
+        OnPropertyChanged(nameof(HasPlanCharacters));
+        OnPropertyChanged(nameof(NoPlanCharacters));
 
         if (!log) return;
         foreach (var c in _characters.Where(c => !before.TryGetValue(c.Name, out var t) || t != c.Time))
@@ -98,22 +107,44 @@ public partial class MainViewModel
 
     private CharacterSnapshot? Character => _characters.FirstOrDefault(c => c.Name == PlanCharacter);
 
+    private void RefreshPlanOptions()
+    {
+        try
+        {
+            (PlanHasSubParts, PlanUsesBars) = _planner is { } planner && PlanProfession.Length > 0 ? planner.OptionsFor(PlanProfession) : (true, false);
+        }
+        catch (Exception) { (PlanHasSubParts, PlanUsesBars) = (true, false); }
+    }
+
+    /// <summary>The character's typed counts; older shared ones (from before counts were per character) as a start.</summary>
+    private Dictionary<int, int> LoadHave() =>
+        ParseHave(_talentBuilds.GetSetting(HaveKey) ?? _talentBuilds.GetSetting("craftplan_have"));
+
+    // Typed "have" counts belong to a character (alts carry different bags); without a character they're shared.
+    private string HaveKey => PlanCharacter == NoCharacter ? "craftplan_have" : $"craftplan_have:{PlanCharacter}";
+
     partial void OnPlanCharacterChanged(string value)
     {
         if (_plannerReady && value != NoCharacter) _talentBuilds.SetSetting("craftplan_character", value);
-        ApplyCharacterSkill();
+        if (_plannerReady) _manualHave = LoadHave();
+        ApplyCharacterSkill(switched: true);
         QueuePlan();
     }
 
     partial void OnPlanProfessionChanged(string value)
     {
         if (_plannerReady && value.Length > 0) _talentBuilds.SetSetting("craftplan_profession", value);
-        ApplyCharacterSkill();
+        RefreshPlanOptions();
+        ApplyCharacterSkill(switched: true);
         QueuePlan();
     }
 
     /// <summary>The character's rank in the profession becomes the start; the target is the next trainer cap.</summary>
-    private void ApplyCharacterSkill()
+    /// <param name="switched">
+    /// True when you picked another character or profession: skill and goal follow it. On a sync from the game only
+    /// the skill moves; a goal you set stays unless the skill has reached it.
+    /// </param>
+    private void ApplyCharacterSkill(bool switched = false)
     {
         if (Character is not { } c)
         {
@@ -126,7 +157,9 @@ public partial class MainViewModel
         {
             PlanFromText = skill.Rank.ToString(CultureInfo.InvariantCulture);
             var cap = ProfessionPlanner.Ranks.Select(r => r.Cap).FirstOrDefault(c2 => c2 > skill.Rank, 300);
-            PlanToText = Math.Max(cap, skill.Max > skill.Rank ? skill.Max : cap).ToString(CultureInfo.InvariantCulture);
+            var goal = int.TryParse(PlanToText, out var g) ? g : 0;
+            if (switched || goal <= skill.Rank)
+                PlanToText = Math.Max(cap, skill.Max > skill.Rank ? skill.Max : cap).ToString(CultureInfo.InvariantCulture);
         }
         var known = c.Recipes.TryGetValue(PlanProfession, out var r) ? $"{r.Count} known recipes" : "recipes: open the profession window once";
         PlanCharacterNote = c.Skills.TryGetValue(PlanProfession, out var s2)
@@ -173,8 +206,8 @@ public partial class MainViewModel
             var from = int.TryParse(PlanFromText, out var f) ? Math.Clamp(f, 1, 299) : 1;
             var to = int.TryParse(PlanToText, out var t) ? Math.Clamp(t, from + 1, 300) : 300;
             var known = Character?.Recipes.GetValueOrDefault(PlanProfession);
-            var options = new PlanOptions(PlanProfession, from, to, PlanVendorRecipes, PlanDropRecipes, PlanSubParts, PlanSmelt,
-                known, Owned());
+            var options = new PlanOptions(PlanProfession, from, to, PlanVendorRecipes, PlanDropRecipes,
+                PlanSubParts && PlanHasSubParts, PlanSmelt && PlanUsesBars, known, Owned());
             PlanBusy = true;
             var plan = await Task.Run(() => planner.Plan(options), ct);
             if (ct.IsCancellationRequested) return;
@@ -225,7 +258,7 @@ public partial class MainViewModel
     private void OnHaveTyped(PlanMaterialRow row)
     {
         _manualHave[row.ItemId] = row.Have;
-        _talentBuilds.SetSetting("craftplan_have", string.Join(",", _manualHave.Select(h => $"{h.Key}:{h.Value}")));
+        _talentBuilds.SetSetting(HaveKey, string.Join(",", _manualHave.Select(h => $"{h.Key}:{h.Value}")));
     }
 
     private static Dictionary<int, int> ParseHave(string? text)
@@ -258,7 +291,7 @@ public partial class MainViewModel
     private void ClearTypedHave()
     {
         _manualHave.Clear();
-        _talentBuilds.SetSetting("craftplan_have", "");
+        _talentBuilds.SetSetting(HaveKey, "");
         QueuePlan();
     }
 

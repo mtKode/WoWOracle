@@ -15,6 +15,12 @@ GETTING STARTED
   Your data (talent sets, gear sets, craft list, icon cache) lives
   in %LOCALAPPDATA%\WowCompanion. Delete that folder to reset.
 
+START MENU
+  The app is portable: it stays in this folder and installs nothing.
+  The bar above the search box offers "Add to Start menu" so Windows
+  search finds it. Keep the folder somewhere fixed (not Downloads);
+  if you move it, the shortcut follows on the next start.
+
 THE IN-GAME ADDON (recommended)
   The zip has the WoW Oracle addon in the "addon" folder; keep it next
   to the exe. The app finds World of Warcraft by itself and shows a

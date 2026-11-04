@@ -288,17 +288,58 @@ public partial class MainViewModel
     private static double? ParseStat(string text) =>
         double.TryParse(text.Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
 
-    private CharacterSheet SheetFor(int classId, int raceId, double?[] naked) => StatEngine.Compute(new CharacterInput
+    /// <summary>
+    /// The character sheet. Naked stats: what you typed wins; blanks come from base stats recorded in game (the
+    /// addon, per class, race and level), and only then from the estimate.
+    /// </summary>
+    private CharacterSheet SheetFor(int classId, int raceId, double?[] naked)
     {
-        ClassId = classId,
-        RaceId = raceId,
-        Level = CalcLevel,
-        NakedStats = naked,
-        Gear = _calcGear,
-        Talents = _talentSpells,
-        Buffs = BuffToggles.Where(b => b.IsOn).Select(b => b.Buff).ToList(),
-        Effects = _effects,
-    });
+        BaseStatsLookup? fromGame = null;
+        if (naked.Any(v => v is null))
+        {
+            try { fromGame = _baseStats.Find(classId, raceId, CalcLevel); }
+            catch (Exception) { } // no recorded stats: the estimate is used
+        }
+        var filled = fromGame is null
+            ? naked
+            : Enumerable.Range(0, 5).Select(i => i < naked.Length && naked[i] is { } v ? v : (double?)fromGame.Stats[i]).ToArray();
+        var sheet = StatEngine.Compute(new CharacterInput
+        {
+            ClassId = classId,
+            RaceId = raceId,
+            Level = CalcLevel,
+            NakedStats = filled,
+            Gear = _calcGear,
+            Talents = _talentSpells,
+            Buffs = BuffToggles.Where(b => b.IsOn).Select(b => b.Buff).ToList(),
+            Effects = _effects,
+        });
+        if (fromGame is not null) sheet.Notes.Add($"Naked stats {fromGame.Source}.");
+        return sheet;
+    }
+
+    /// <summary>Every class/race/level base stat row recorded in game, as CSV on the clipboard (to share or check).</summary>
+    [RelayCommand]
+    private void CopyBaseStats()
+    {
+        try
+        {
+            var rows = _baseStats.All();
+            if (rows.Count == 0)
+            {
+                Toast("No base stats recorded yet. Log in characters with the addon (each level is saved by itself).");
+                return;
+            }
+            string ClassName(int id) => TalentClasses.FirstOrDefault(c => c.Id == id)?.Name ?? $"class {id}";
+            string RaceName(int id) => Races.FirstOrDefault(r => r.Id == id)?.Name ?? $"race {id}";
+            Clipboard.SetText(_baseStats.Csv(ClassName, RaceName));
+            Toast($"Copied {rows.Count} base stat rows (CSV).");
+        }
+        catch (Exception ex)
+        {
+            Toast($"Couldn't copy the base stats: {ex.Message}");
+        }
+    }
 
     /// <summary>Rebuilds the character sheet and the damage numbers from everything above.</summary>
     private void Recalculate()

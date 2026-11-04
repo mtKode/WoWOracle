@@ -95,6 +95,30 @@ public sealed class ProfessionPlanner(string databasePath)
         return list;
     }
 
+    /// <summary>
+    /// Which options matter for a profession: sub-parts (it uses reagents it makes itself: bolts, cured leather…) and
+    /// smelting (bars are a main material: at least 15% of its recipes use one, so Blacksmithing and Engineering, not
+    /// Alchemy or Tailoring with a few transmutes and threads).
+    /// </summary>
+    public (bool SubParts, bool Bars) OptionsFor(string profession)
+    {
+        using var connection = Open();
+        double Share(string maker)
+        {
+            using var c = connection.CreateCommand();
+            c.CommandText = $"""
+                SELECT CAST(COUNT(DISTINCT CASE WHEN rr.item_id IN
+                                  (SELECT created_item_id FROM recipes WHERE created_item_id > 0 AND profession = {maker})
+                             THEN r.spell_id END) AS REAL) / MAX(COUNT(DISTINCT r.spell_id), 1)
+                FROM recipes r LEFT JOIN recipe_reagents rr ON rr.spell_id = r.spell_id
+                WHERE r.profession = $p
+                """;
+            c.Parameters.AddWithValue("$p", profession);
+            return c.ExecuteScalar() is double d ? d : 0;
+        }
+        return (Share("$p") > 0, profession != "Mining" && Share("'Mining'") >= 0.15);
+    }
+
     public ProfessionPlan Plan(PlanOptions options)
     {
         using var connection = Open();
@@ -197,7 +221,7 @@ public sealed class ProfessionPlanner(string databasePath)
                 recipe.Reagents.Select(x => (x.Item, x.Qty)).ToList(),
                 (long)(count * recipe.Reagents.Sum(x => x.Qty * Cost(x.Item))))
             {
-                IconId = items.GetValueOrDefault(recipe.Created)?.Icon ?? 0,
+                IconId = RecipeIcons.Or(items.GetValueOrDefault(recipe.Created)?.Icon ?? 0, recipe.Learn),
                 Makes = recipe.Makes,
                 ReagentText = string.Join(", ", recipe.Reagents.Select(x => $"{x.Qty}× {items.GetValueOrDefault(x.Item)?.Name ?? "item " + x.Item}")),
             });

@@ -535,7 +535,7 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
                 + (recipe.GreyAt > 0 ? $" · grey at {recipe.GreyAt}" : ""),
                 quantities[recipe.SpellId],
                 ItemQuality.BrushFor(recipe.CreatedItemId > 0 ? recipe.Quality : 1),
-                recipe.IconId)
+                RecipeIcons.Or(recipe.IconId, recipe.MinSkill))
             {
                 Done = done.Contains(recipe.SpellId),
             });

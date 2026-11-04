@@ -294,6 +294,11 @@ public static class KnownIds
             while (r.Read()) list.Add(r.GetInt32(0));
             return list;
         }
+        IEnumerable<int> Placeholders()
+        {
+            try { return Ids("SELECT id FROM placeholder_items"); }
+            catch (SqliteException) { return []; } // databases from before placeholders
+        }
         string Meta(string key)
         {
             using var c = connection.CreateCommand();
@@ -313,6 +318,8 @@ public static class KnownIds
             ("quests", Ids("SELECT id FROM quests").Where(id => !learnedQuests.Contains(id)).ToList()),
             ("vendors", Ids("SELECT DISTINCT ref_id FROM item_sources WHERE kind = 'vendor'")),
             ("sourced", Ids("SELECT DISTINCT item_id FROM item_sources")),
+            // Items with real data; placeholders (crafted items named after their recipe) count as unknown.
+            ("items", Ids("SELECT id FROM items").Except(Placeholders()).ToList()),
         };
 
         var b = new StringBuilder();

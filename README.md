@@ -24,8 +24,8 @@ to the game. An optional in-game addon keeps it in sync with your character.
 
 ## Getting started
 
-1. Download the latest `WoWOracle-<version>.zip` from the **Releases** page and unzip it anywhere (Desktop,
-   Documents, a games folder…). Keep the `addon` folder next to the exe.
+1. Download the latest `WoWOracle-<version>.zip` from the **Releases** page and unzip it somewhere it can stay (a games
+   folder, Documents…; not Downloads). Keep the `addon` folder next to the exe.
 2. Run **`WoW Oracle.exe`**. Nothing to install, no .NET needed. Windows SmartScreen may warn because the exe isn't
    signed: click **More info → Run anyway**.
 3. The first start downloads the game data (items, spells, talents, maps, where things drop) and puts it together.
@@ -33,6 +33,9 @@ to the game. An optional in-game addon keeps it in sync with your character.
 4. The bar above the search box shows the WoW Forever install it found. Click **Install addon** to put the
    addon into the game (see below). If WoW isn't in a usual place, click **Browse…** and pick your World of Warcraft
    folder.
+5. Once the addon is set, the same bar offers **Add to Start menu**, so Windows search (and launchers like
+   PowerToys Run) find the app. If you move the folder later, the shortcut follows on the next start. No to that?
+   The **Addon** button at the bottom right offers it again.
 
 **Ctrl+Shift+\_** hides the window to the tray and brings it back, even while you're in the game. Press **/**
 anywhere to start a new search.
@@ -51,8 +54,9 @@ updates). In game, `/reload` or restart, and tick *WoW Oracle* in the AddOns lis
 | | |
 |---|---|
 | **Your gear and talents** | Kept as a gear set and a talent set named exactly after your character. Sets with any other name are never touched, so copy one ("… Alt SP") to experiment. |
+| **Base stats per class, race and level** | Your naked base stats (Str, Agi, Sta, Int, Spi without gear or buffs) at every level you reach, for every character. The Calculator uses them instead of its estimate (in between recorded levels it fills the gap). Take everything off once to also record base health and mana. **Copy recorded** in the Calculator gives the whole table as CSV. |
 | **Professions, recipes, bags and bank** | Feed the profession planner: your skill, the recipes you know and the materials you have. Open each profession window and the bank once. |
-| **New quests, NPCs, vendors and loot** | Things the app's data doesn't have yet (new Forever zones and quests) are recorded once and added to the app: quest givers and rewards, NPCs on the map, what vendors sell, what mobs drop with a drop chance from your own kills. Things the app already knows are not recorded. |
+| **New quests, NPCs, vendors, loot and items** | Things the app's data doesn't have yet (new Forever zones, quests and recipes) are recorded once and added to the app: quest givers and rewards, NPCs on the map, what vendors sell, what mobs drop with a drop chance from your own kills, and the names and stats of new items you carry, craft, loot or see at a vendor. Things the app already knows are not recorded. |
 
 The game writes the addon's data when you **log out** or **/reload**; the app picks it up within seconds and says
 what came in, in **Oracle's Chronicle** (the scroll at the bottom left).
@@ -64,6 +68,7 @@ what came in, in **Oracle's Chronicle** (the scroll at the bottom left).
 | `/oracle sync` | Save now and reload, so the app gets your latest state right away |
 | `/oracle` | Copy your character (also the **Oracle** button on your character window) |
 | `/oracle t` | Copy the player you're targeting (also the **Oracle** button on the inspect window) |
+| `/oracle base` | Your base stats right now, and how many class/race/level combinations are saved |
 | `/oracle quests` · `/oracle seen` | How many new quests / NPCs, vendors and loot sources are waiting for the app |
 | `/oracle debug` | Prints what the client supports; handy for bug reports |
 

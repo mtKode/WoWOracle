@@ -118,7 +118,7 @@ public sealed record RecipeRow(int SpellId, string Name, string Meta, string Rea
             $"{r.Profession} · requires {learn}{source}",
             r.ReagentText.Length > 0 ? r.ReagentText : "No reagents listed",
             r.CreatedItemId > 0 ? ItemQuality.BrushFor(r.Quality) : ItemQuality.BrushFor(1),
-            r.IconId)
+            RecipeIcons.Or(r.IconId, r.MinSkill)) // enchants: the enchanting material of their skill bracket
         {
             Orange = bands.Orange,
             Yellow = bands.Yellow,

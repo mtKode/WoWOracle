@@ -6,7 +6,7 @@ before launch).
 
 ## 1. Setup and addon install
 - [ ] Start the app. The bar above the search box shows `_forever_ (Forever)   not installed` → **Install addon**.
-- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.8.0` in green.
+- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.9.0` in green.
 - [ ] In game, the addon is listed and **not** "out of date". The TOC says `## Interface: 16001` (beta). If the
       release client has a new interface number (`/dump select(4, GetBuildInfo())`), update the TOC, rebuild, Update addon.
 - [ ] The leftover `_classic_beta_` folder is ignored (shown nowhere). Delete it if Battle.net left it behind.
@@ -42,6 +42,12 @@ before launch).
 - [ ] Target a few NPCs in a Forever-only zone (Mount Hyjal, Zephras Isle…) and a vendor there; kill and loot some mobs. `/oracle seen` counts go up; in an old zone they stay at 0.
 - [ ] `/oracle sync` → Chronicle: "From your travels in Azeroth: … new NPCs, … vendor items, … drops". The new NPC shows on the map, its drops in the item's sources.
 - [ ] If loot never counts: `/dump GetLootSourceInfo` must be a function (otherwise only your dead target counts).
+
+## 5c. Base stats (addon 0.9.0)
+- [ ] `/oracle base` prints your base stats; after `/oracle sync` the Chronicle says "Base stats from the game: … recorded".
+- [ ] Calculator with that class, race and level and blank naked stats: the note says "Naked stats recorded in game at level N".
+- [ ] Take all gear off once: `/oracle base` mentions health and mana; **Copy recorded** gives CSV with naked health/mana.
+- [ ] Make the class/race combinations you're curious about (Tauren Warrior…) and log each in once.
 
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.

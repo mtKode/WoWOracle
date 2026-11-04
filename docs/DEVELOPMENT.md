@@ -91,6 +91,12 @@ then deletes older files (`GameDb.DeleteOlder`).
 inline icons and links are removed, and hand-wrapped tooltip lines are joined (paragraphs stay). Spell, talent and
 item descriptions go through it when the database is built; talent trees from the addon too.
 
+### Placeholder items
+
+The client's `Item` table sometimes has items wago.tools has no `ItemSparse` row for yet (new Forever recipes such as
+Cleansing Stew). Crafted ones get a stand-in named after their recipe, with their real class and icon, listed in
+`placeholder_items`; learned data from the addon replaces them, and real data does on the next build.
+
 ### Hidden items
 
 `hidden_items` lists Season of Discovery leftovers (ids 202000–238999, and SoD supply items such as Waylaid Supplies above 200000) and
@@ -137,16 +143,18 @@ Everything the addon saves is a text block: a marker line, `key=value` lines, `!
 | `!WOWORACLE-SELF 1` | Your own export, saved by itself | Own gear sync (sets named exactly after the character) |
 | `!WOWORACLE-CHAR 1` | Profession ranks, known recipes, bag and bank counts | Crafting planner |
 | `!WOWORACLE-TALENTS 1` | The live talent tree: `node=id;x;y;maxRanks;spell;icon;unlocks;name;description` | Used only when the client build is newer than the wago.tools data |
+| `!WOWORACLE-BASE 1` | Base stats per class/race/level: `base=class;race;level;str;agi;sta;int;spi` (paper-doll stat minus gear and buffs), `vitals=health;mana;naked` | `base_stats` (user.sqlite) → Calculator naked stats (exact level, else interpolated) |
 | `!WOWORACLE-QUEST 1` | Quests the data lacks: giver, where, rewards, `itemdata=` | `learned_quests` → game database |
 | `!WOWORACLE-NPC 1` | NPCs without a known spot: name, level, rank, reaction, `at=zone;x;y` | `seen_data` → game database |
 | `!WOWORACLE-VENDOR 1` | Unknown vendors, or known ones selling an item without a source: `item=id;price;stack;left;extendedCost` | `seen_data` → item sources |
+| `!WOWORACLE-ITEM 1` | Items the data has no item row for, seen in bags, bank, profession windows, loot or vendors: one `itemdata=` line | `learned_items` → items (replaces placeholders) |
 | `!WOWORACLE-LOOT 1` | Loot from unknown NPCs/objects, or items without a source: `source=npc\|object;id;name`, `kills=`, `item=id;drops;count` | `seen_data` → item sources (chance = drops / kills) |
 
 ### Only new data (`Known.lua`)
 
 The app writes `Known.lua` into each installed addon copy: the ids its data already has, as ranges (`npcs`,
 `placed` = NPCs with a spot, `objects`, `quests` minus the ones the addon reported, `vendors`, `sourced` = items with
-any source). The addon saves quests, NPCs, vendors and loot only when they're not in it; with the placeholder
+any source, `items` = items with real data). The addon saves quests, NPCs, vendors and loot only when they're not in it; with the placeholder
 `WoWOracleKnown = nil` it saves none of them. The file is rebuilt only when the database changed or something was
 added.
 

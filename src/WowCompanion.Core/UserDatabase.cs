@@ -107,6 +107,20 @@ public static class UserDatabase
             updated_utc TEXT NOT NULL
         );
         """,
+        """
+        CREATE TABLE base_stats (
+            class_id INTEGER NOT NULL,
+            race_id INTEGER NOT NULL,
+            level INTEGER NOT NULL,
+            str REAL NOT NULL, agi REAL NOT NULL, sta REAL NOT NULL, int REAL NOT NULL, spi REAL NOT NULL,
+            health INTEGER NOT NULL DEFAULT 0,
+            mana INTEGER NOT NULL DEFAULT 0,
+            naked INTEGER NOT NULL DEFAULT 0,
+            build TEXT NOT NULL DEFAULT '',
+            updated_utc TEXT NOT NULL,
+            PRIMARY KEY (class_id, race_id, level)
+        );
+        """,
     ];
 
     public static void Initialize(string path)
