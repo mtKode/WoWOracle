@@ -1,6 +1,6 @@
 ==============================================================
                      W o W   O r a c l e
-        A pocket companion for the WoW Forever beta
+          A pocket companion for WoW Forever
 ==============================================================
 
 GETTING STARTED

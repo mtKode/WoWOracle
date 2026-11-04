@@ -7,7 +7,7 @@ namespace WowCompanion.Desktop;
 /// <summary>
 /// Your own gear and talents from the addon (!WOWORACLE-SELF blocks, saved by the game on login, gear or talent
 /// changes and logout): kept in a gear set and a talent set named exactly after the character. Only that exact name
-/// is updated, so copies under other names ("Hjalmar Järnlykta Alt SP") stay as you left them.
+/// is updated, so copies under other names ("Thrall Alt SP") stay as you left them.
 /// </summary>
 public partial class MainViewModel
 {
