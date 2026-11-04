@@ -24,7 +24,8 @@ public static partial class GameDatabaseBuilder
     [GeneratedRegex(@"^(Waylaid Supplies|Waylaid Crate|Supply Shipment|Spell Notes:)", RegexOptions.IgnoreCase)]
     private static partial Regex SodName();
 
-    [GeneratedRegex(@"\bTest\b|\bQA|^Monster - |\bOLD\b|\(OLD\)|No Longer Used|Deprecated|DEPRECATED|\[PH\]|\bPH\b|^zz|^ZZ|^Unused\b",
+    // Also Blizzard's item-level template gear ("90 Epic Warrior Helm", "63 Green Frost Belt"): never in the game.
+    [GeneratedRegex(@"\bTest\b|\bQA|^Monster - |\bOLD\b|\(OLD\)|No Longer Used|Deprecated|DEPRECATED|\[PH\]|\bPH\b|^zz|^ZZ|^Unused\b|^\d+ (Epic|Green|Blue|Rare|Purple) ",
         RegexOptions.None)]
     private static partial Regex TestName();
 

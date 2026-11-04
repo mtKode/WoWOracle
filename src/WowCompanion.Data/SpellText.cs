@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using WowCompanion.Core;
 
 namespace WowCompanion.Data;
 
@@ -13,7 +14,8 @@ public sealed class SpellText(Func<int, SpellFacts?> lookup, Func<int, double>? 
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
-    public string Render(string text, SpellFacts spell) => Render(text, spell, 0);
+    /// <summary>The tooltip text, with the client's colour codes and hard line wraps tidied (GameText.Clean).</summary>
+    public string Render(string text, SpellFacts spell) => GameText.Clean(Render(text, spell, 0));
 
     private string Render(string text, SpellFacts spell, int depth)
     {

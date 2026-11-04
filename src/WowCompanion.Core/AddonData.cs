@@ -257,13 +257,13 @@ public static class TalentOverlay
                 insert.Parameters.AddWithValue("$pre", maxRanks.ContainsKey(pre) ? pre : 0);
                 insert.Parameters.AddWithValue("$preRank", maxRanks.TryGetValue(pre, out var preMax) ? preMax - 1 : 0);
                 insert.Parameters.AddWithValue("$n", n.Name);
-                insert.Parameters.AddWithValue("$desc", string.Join('\u001f', Enumerable.Repeat(n.Description, n.MaxRanks)));
+                insert.Parameters.AddWithValue("$desc", string.Join('\u001f', Enumerable.Repeat(GameText.Clean(n.Description), n.MaxRanks)));
                 insert.ExecuteNonQuery();
 
                 spell.Parameters.Clear();
                 spell.Parameters.AddWithValue("$id", n.SpellId);
                 spell.Parameters.AddWithValue("$n", n.Name);
-                spell.Parameters.AddWithValue("$d", n.Description);
+                spell.Parameters.AddWithValue("$d", GameText.Clean(n.Description));
                 spell.Parameters.AddWithValue("$c", layout.ClassId);
                 spell.Parameters.AddWithValue("$icon", n.IconId);
                 spell.ExecuteNonQuery();

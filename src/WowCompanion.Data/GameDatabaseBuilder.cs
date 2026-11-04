@@ -335,7 +335,7 @@ public static partial class GameDatabaseBuilder
 
             id.Value = itemId;
             name.Value = itemName;
-            description.Value = row.Get("Description_lang").Trim();
+            description.Value = GameText.Clean(row.Get("Description_lang"));
             quality.Value = itemQuality;
             itemLevel.Value = level;
             requiredLevel.Value = row.GetInt("RequiredLevel");

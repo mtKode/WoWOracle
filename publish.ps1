@@ -4,12 +4,15 @@
 
   Usage:   .\publish.ps1                 # Friz Quadrata NOT included (it's Blizzard's licensed font)
            .\publish.ps1 -IncludeFont    # copies .\font\*.ttf into the zip, your call
+           .\publish.ps1 -Version 1.2.0  # this version instead of the one in Directory.Build.props
+                                         # (GitHub passes the tag's version, so a tag is all a release needs)
 #>
-param([switch]$IncludeFont)
+param([switch]$IncludeFont, [string]$Version)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
-$version = ([xml](Get-Content .\Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+$version = $Version
+if (-not $version) { $version = ([xml](Get-Content .\Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1 }
 if (-not $version) { $version = 'dev' }
 
 $stage = Join-Path $PSScriptRoot "dist\WoWOracle-$version"
@@ -19,6 +22,7 @@ if (Test-Path $zip)   { Remove-Item $zip -Force }
 
 Write-Host "Publishing WoW Oracle $version ..." -ForegroundColor Yellow
 dotnet publish .\src\WowCompanion.Desktop -c Release -r win-x64 --self-contained true `
+    -p:Version=$version `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `

@@ -22,8 +22,10 @@ addon (`addon\WoWOracle`, with the empty `Known.lua` placeholder), `packaging\RE
 `.github/workflows/release.yml` builds the zip on GitHub (Windows runner, same `publish.ps1`) and attaches it to a
 GitHub Release:
 
-1. Bump `<Version>` in `Directory.Build.props` and commit.
-2. `git tag v1.0.1` and `git push origin v1.0.1` (the tag must match the version, or the build stops).
+1. Commit and push your changes.
+2. `git tag v1.0.1` and `git push origin v1.0.1`. The tag is the version: the build passes it to `publish.ps1
+   -Version`, so the app and zip get it. `Directory.Build.props` only matters for local builds (bump it now and then
+   so they match).
 3. The Release appears with `WoWOracle-1.0.1.zip` and notes generated from the commits; edit the notes on GitHub if you like.
 
 "Run workflow" on the Actions tab makes a test build without a Release (the zip is attached to the run).
@@ -83,10 +85,16 @@ then deletes older files (`GameDb.DeleteOlder`).
 - **Schema changes**: bump `GameDb.SchemaVersion` whenever tables change. The schema number is part of the file
   name, so the next start builds a new database from the cached CSVs.
 
+### Game text
+
+`GameText.Clean` tidies text from the client: UI colour codes (`|cFFFFFFFF…|r`, `|cnEPIC_PURPLE_COLOR:…|r`), `|n`,
+inline icons and links are removed, and hand-wrapped tooltip lines are joined (paragraphs stay). Spell, talent and
+item descriptions go through it when the database is built; talent trees from the addon too.
+
 ### Hidden items
 
 `hidden_items` lists Season of Discovery leftovers (ids 202000–238999, and SoD supply items such as Waylaid Supplies above 200000) and
-test/placeholder items (by name). `ItemVisibility.HideSod` filters them from search, recipes, upgrades and the
+test/placeholder items (by name, including Blizzard's item-level template gear such as "90 Epic Warrior Helm"). `ItemVisibility.HideSod` filters them from search, recipes, upgrades and the
 planner; items seen in game (gear sets, learned items, quest rewards) are taken off the list.
 
 ## How the numbers are worked out
