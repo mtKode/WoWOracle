@@ -54,6 +54,9 @@ public sealed class CharacterSheet
     public bool UsesEstimate { get; init; }
     public List<string> Notes { get; } = [];
 
+    /// <summary>Bonus healing: spell power items (damage and healing), healing items and auras.</summary>
+    public double HealingPower => Totals[Stat.Healing];
+
     public double SpellPowerFor(int school) =>
         Totals[Stat.SpellPower] + (StatBag.SchoolPower(school) is { } s ? Totals[s] : 0);
 
@@ -95,7 +98,7 @@ public sealed class CharacterSheet
         {
             if (Totals[stat] != 0) lines.Add(new("Spell", label, "+" + N(Totals[stat])));
         }
-        if (Totals[Stat.Healing] != 0) lines.Add(new("Spell", "Healing", N(Totals[Stat.Healing])));
+        if (Totals[Stat.Healing] != 0) lines.Add(new("Spell", "Healing power", N(Totals[Stat.Healing])));
         lines.Add(new("Spell", "Crit chance", P(SpellCrit)));
         lines.Add(new("Spell", "Hit chance", P(SpellHit)));
         if (Totals[Stat.Mp5] != 0) lines.Add(new("Spell", "Mana per 5 sec", N(Totals[Stat.Mp5])));

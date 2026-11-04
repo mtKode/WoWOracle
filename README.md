@@ -144,8 +144,12 @@ from the addon.
 
 ### Calculator (Ctrl+7)
 Pick class, race, level, a gear set and a talent set, add buffs and consumables, choose a target level, and see
-your full character sheet (hit, crit, spell power, attack power…) and the damage of your spells: per cast, DPS
-and crit, with the talents that changed it. Compare races, and save calculations to compare later. Type your naked
+your full character sheet (hit, crit, spell power, healing power, attack power…) and what your spells do:
+damage per cast and DPS, or for heals the healing per cast, HPS and healing per mana (heals over time and shields
+like Power Word: Shield too), with the talents that changed it. Below it, **Your damage spells / Your heals** lines up
+every spell of that kind side by side (per cast, per second, per mana, and what 100 more power adds), so you see
+which ones scale best with spell power, healing power or attack power. Tick **Ranks of this spell** to compare its
+ranks instead (handy for picking an efficient downrank). Compare races, and save calculations to compare later. Type your naked
 stats from the character screen for exact numbers.
 
 ### Loot (Ctrl+8)

@@ -3102,7 +3102,7 @@
                             <RowDefinition Height="230" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <TextBox Grid.Row="0" Style="{StaticResource FilterTextBox}" Tag="Filter damage spells" Margin="0,0,0,6"
+                        <TextBox Grid.Row="0" Style="{StaticResource FilterTextBox}" Tag="Filter damage and healing spells" Margin="0,0,0,6"
                                  local:ListKeys.Target="{Binding ElementName=CalcSpellList}"
                                  Text="{Binding CalcFilter, UpdateSourceTrigger=PropertyChanged}" />
                         <Border Grid.Row="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
@@ -3176,7 +3176,8 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="Race" FontSize="11" Foreground="{StaticResource Dim}" />
                                             <TextBlock Grid.Column="1" Text="Per cast" FontSize="11" Foreground="{StaticResource Dim}" />
-                                            <TextBlock Grid.Column="2" Text="DPS" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="2" Text="Per sec" FontSize="11" Foreground="{StaticResource Dim}"
+                                                       ToolTip="DPS for damage spells, HPS for heals" />
                                             <TextBlock Grid.Column="3" Text="Crit" FontSize="11" Foreground="{StaticResource Dim}" />
                                         </Grid>
                                         <ItemsControl ItemsSource="{Binding RaceRows}">
@@ -3197,6 +3198,58 @@
                                                     <DataTemplate.Triggers>
                                                         <DataTrigger Binding="{Binding IsCurrent}" Value="True">
                                                             <Setter TargetName="RaceName" Property="Foreground" Value="{StaticResource Gold}" />
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <!-- Spell comparison: every spell of the same kind (or every rank), same character. -->
+                                    <StackPanel Margin="0,12,0,0" Visibility="{Binding HasSpellRows, Converter={StaticResource BoolToVis}}">
+                                        <DockPanel Margin="0,0,0,4">
+                                            <CheckBox DockPanel.Dock="Right" IsChecked="{Binding CompareRanks}" Content="Ranks of this spell"
+                                                      Foreground="{StaticResource Dim}" FontSize="11" VerticalAlignment="Center"
+                                                      ToolTip="Compare the ranks of the picked spell instead of all your spells" />
+                                            <TextBlock Text="{Binding SpellCompareTitle}" FontSize="12" Foreground="{StaticResource Gold}" />
+                                        </DockPanel>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="70" />
+                                                <ColumnDefinition Width="64" />
+                                                <ColumnDefinition Width="64" />
+                                                <ColumnDefinition Width="80" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Spell" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="1" Text="Per cast" FontSize="11" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Grid.Column="2" Text="Per sec" FontSize="11" Foreground="{StaticResource Dim}"
+                                                       ToolTip="DPS for damage spells, HPS for heals (cast time or global cooldown; over the duration for DoTs and HoTs)" />
+                                            <TextBlock Grid.Column="3" Text="Per mana" FontSize="11" Foreground="{StaticResource Dim}"
+                                                       ToolTip="Per point of mana, rage or energy" />
+                                            <TextBlock Grid.Column="4" Text="+100 power" FontSize="11" Foreground="{StaticResource Dim}"
+                                                       ToolTip="What 100 more spell power, healing power or attack power (whichever the spell uses) adds per cast: how well it scales" />
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding SpellRows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,1,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="70" />
+                                                            <ColumnDefinition Width="64" />
+                                                            <ColumnDefinition Width="64" />
+                                                            <ColumnDefinition Width="80" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock x:Name="CompareName" Text="{Binding Name}" FontSize="13" Foreground="{StaticResource Parchment}"
+                                                                   TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding PerCast}" FontSize="13" Foreground="{StaticResource Parchment}" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding PerSec}" FontSize="13" Foreground="{StaticResource Parchment}" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding PerCost}" FontSize="13" Foreground="{StaticResource Parchment}" />
+                                                        <TextBlock Grid.Column="4" Text="{Binding Per100Power}" FontSize="13" Foreground="{StaticResource Green}" />
+                                                    </Grid>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                            <Setter TargetName="CompareName" Property="Foreground" Value="{StaticResource Gold}" />
                                                         </DataTrigger>
                                                     </DataTemplate.Triggers>
                                                 </DataTemplate>

@@ -10,6 +10,8 @@ namespace WowCompanion.Desktop;
 
 /// <summary>A row in the race comparison table.</summary>
 public sealed record RaceCompareRow(string Race, string PerCast, string Dps, string Crit, bool IsCurrent);
+/// <summary>One spell (or rank) in the spell comparison: per cast, per second, per point of cost, +100 power.</summary>
+public sealed record SpellCompareRow(string Name, string PerCast, string PerSec, string PerCost, string Per100Power, bool IsCurrent);
 
 /// <summary>
 /// Calculator page. The character (class, race, level, naked stats, buffs) lives here; a gear set is only the
@@ -37,6 +39,12 @@ public partial class MainViewModel
     public ObservableCollection<SpellRow> CalcRanks { get; } = [];
     public ObservableCollection<SheetRow> WeaponLines { get; } = [];
     public ObservableCollection<RaceCompareRow> RaceRows { get; } = [];
+    public ObservableCollection<SpellCompareRow> SpellRows { get; } = [];
+    [ObservableProperty] private bool _hasSpellRows;
+    [ObservableProperty] private string _spellCompareTitle = "";
+    /// <summary>Compare the ranks of the picked spell instead of every spell of its kind.</summary>
+    [ObservableProperty] private bool _compareRanks;
+    partial void OnCompareRanksChanged(bool value) => ComputeDamage();
     public IReadOnlyList<string> TargetOptions { get; } = ["Same level", "+1 level", "+2 levels", "+3 levels (boss)"];
 
     // ----- Character -----
@@ -357,7 +365,7 @@ public partial class MainViewModel
         if (_spellListFor != (cls.Id, CalcLevel))
         {
             _spellListFor = (cls.Id, CalcLevel);
-            _allCalcSpells = _calcData.GetDamageSpells(cls.Id, CalcLevel).ToList();
+            _allCalcSpells = _calcData.GetCalcSpells(cls.Id, CalcLevel).ToList();
             FilterCalcSpells();
         }
         ComputeDamage();
@@ -389,11 +397,13 @@ public partial class MainViewModel
             var sheet = SheetFor(cls.Id, race.Id, naked);
             var result = DamageEngine.Compute(spell, effects, sheet, _talentSpells, TargetLevelDiff, _calcMainHand, _calcRanged);
             var physical = StatBag.Schools(spell.SchoolMask).All(s => s == 0);
+            // Heals compare healing per cast and per second; everything else damage.
+            var heal = result.IsHeal;
             RaceRows.Add(new RaceCompareRow(
                 race.Name,
-                Math.Round(result.ExpectedPerCast).ToString("0", inv),
-                result.Dps.ToString("0.0", inv),
-                (physical ? sheet.MeleeCrit : sheet.SpellCrit).ToString("0.00", inv) + "%",
+                Math.Round(heal ? result.HealPerCast : result.ExpectedPerCast).ToString("0", inv),
+                (heal ? result.Hps : result.Dps).ToString("0.0", inv),
+                (physical && !heal ? sheet.MeleeCrit : sheet.SpellCrit).ToString("0.00", inv) + "%",
                 race.Id == CalcRace?.Id));
         }
         HasRaceRows = RaceRows.Count > 1;
@@ -419,6 +429,11 @@ public partial class MainViewModel
             lines.Add($"{group} / {row.Label}: {row.Value}");
         }
         lines.AddRange(DamageModifiers);
+        if (SpellRows.Count > 0)
+        {
+            lines.Add(SpellCompareTitle + " (per cast / per sec / per mana / +100 power):");
+            lines.AddRange(SpellRows.Select(r => $"  {r.Name}: {r.PerCast} / {r.PerSec} / {r.PerCost} / {r.Per100Power}"));
+        }
         return lines;
     }
 
@@ -539,7 +554,8 @@ public partial class MainViewModel
         foreach (var s in _allCalcSpells.Where(x => filter.Length == 0 || x.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
         {
             if (!shown.Add(s.Name)) continue; // one row per spell; ranks are picked next to the results
-            var meta = string.Join(" · ", new[] { s.Rank, ItemText.SchoolMask(s.SchoolMask) }.Where(x => x.Length > 0));
+            var kind = s.Heals && s.Damages ? "damage + heal" : s.Heals ? "heal" : "";
+            var meta = string.Join(" · ", new[] { s.Rank, ItemText.SchoolMask(s.SchoolMask), kind }.Where(x => x.Length > 0));
             CalcSpells.Add(new SpellRow(s.Id, s.Name, meta, s.IconId));
         }
         SelectedCalcSpell = CalcSpells.FirstOrDefault(r => r.Id == keep);
@@ -570,6 +586,63 @@ public partial class MainViewModel
         foreach (var modifier in result.Modifiers) DamageModifiers.Add(modifier);
         foreach (var note in result.Notes) DamageModifiers.Add(note);
         CompareRaces(spell, effects);
+        CompareSpells(spell);
+    }
+
+    /// <summary>
+    /// Every damage spell (or every heal, when a heal is picked) at its best rank, or every rank of the picked spell:
+    /// what it does per cast, per second and per point of cost, and how much 100 more power adds per cast, so it shows
+    /// which spells scale best with spell power, healing power or attack power. Same gear, talents, buffs and target.
+    /// </summary>
+    private void CompareSpells(CalcSpell current)
+    {
+        SpellRows.Clear();
+        HasSpellRows = false;
+        if (_calcData is null || _sheet is null || CalcClass is not { } cls || CalcRace is not { } race) return;
+        var heal = current.Heals && !current.Damages;
+        var spells = CompareRanks
+            ? _allCalcSpells.Where(s => s.Name == current.Name).ToList()
+            : _allCalcSpells.Where(s => heal ? s.Heals : s.Damages).GroupBy(s => s.Name).Select(g => g.First()).ToList();
+        if (spells.Count < 2) return;
+
+        var effects = _calcData.GetEffects(spells.Select(s => s.Id).Concat(_talentSpells.Select(t => t.SpellId)).ToList());
+        // The same character with 100 more of every kind of power, to see how each spell scales.
+        var probe = new Buff("probe", "+100 power", "", [(Stat.SpellPower, 100), (Stat.Healing, 100), (Stat.AttackPower, 100), (Stat.RangedAttackPower, 100)]);
+        var naked = new[] { ParseStat(NakedStr), ParseStat(NakedAgi), ParseStat(NakedSta), ParseStat(NakedInt), ParseStat(NakedSpi) };
+        var boosted = StatEngine.Compute(new CharacterInput
+        {
+            ClassId = cls.Id,
+            RaceId = race.Id,
+            Level = CalcLevel,
+            NakedStats = naked,
+            Gear = _calcGear,
+            Talents = _talentSpells,
+            Buffs = BuffToggles.Where(b => b.IsOn).Select(b => b.Buff).Append(probe).ToList(),
+            Effects = _effects,
+        });
+
+        var inv = CultureInfo.InvariantCulture;
+        var rows = new List<(SpellCompareRow Row, double PerSec)>();
+        foreach (var s in spells)
+        {
+            var now = DamageEngine.Compute(s, effects, _sheet, _talentSpells, TargetLevelDiff, _calcMainHand, _calcRanged);
+            var more = DamageEngine.Compute(s, effects, boosted, _talentSpells, TargetLevelDiff, _calcMainHand, _calcRanged);
+            var perCast = heal ? now.HealPerCast : now.ExpectedPerCast;
+            if (perCast <= 0) continue;
+            var perSec = heal ? now.Hps : now.Dps;
+            var gain = (heal ? more.HealPerCast : more.ExpectedPerCast) - perCast;
+            var name = CompareRanks || s.Rank.Length == 0 ? (s.Rank.Length > 0 ? s.Rank : s.Name) : $"{s.Name} ({s.Rank})";
+            rows.Add((new SpellCompareRow(
+                name,
+                Math.Round(perCast).ToString("0", inv),
+                perSec.ToString("0.0", inv),
+                now.Cost > 0 ? (perCast / now.Cost).ToString("0.00", inv) : "free",
+                gain > 0.5 ? "+" + Math.Round(gain).ToString("0", inv) : "—",
+                s.Id == current.Id), perSec));
+        }
+        foreach (var (row, _) in CompareRanks ? rows : rows.OrderByDescending(r => r.PerSec).ToList()) SpellRows.Add(row);
+        SpellCompareTitle = CompareRanks ? $"Ranks of {current.Name}" : heal ? "Your heals" : "Your damage spells";
+        HasSpellRows = SpellRows.Count > 1;
     }
 
     /// <summary>"SpellCritPct" -> "Spell crit %".</summary>

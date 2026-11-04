@@ -51,6 +51,7 @@ public static class BuffCatalog
         B("shadow_power", "Elixir of Shadow Power", "Consumables", (Stat.ShadowPower, 40)),
         B("frost_power", "Elixir of Frost Power", "Consumables", (Stat.FrostPower, 15)),
         B("wizard_oil", "Brilliant Wizard Oil", "Consumables", (Stat.SpellPower, 36), (Stat.SpellCritPct, 1)),
+        B("mana_oil", "Brilliant Mana Oil", "Consumables", (Stat.Healing, 25), (Stat.Mp5, 12)),
         B("mongoose", "Elixir of the Mongoose", "Consumables", (Stat.Agility, 25), (Stat.MeleeCritPct, 2)),
         B("giants", "Elixir of Giants", "Consumables", (Stat.Strength, 25)),
         B("runn_tum", "Runn Tum Tuber Surprise", "Consumables", (Stat.Intellect, 10)),

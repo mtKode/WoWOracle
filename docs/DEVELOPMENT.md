@@ -103,7 +103,11 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
 - **Calculator** (`Core/Calc`): `StatEngine` = naked stats (estimate or typed) + gear + enchants + equip auras +
   passive talents + buffs, then Classic conversions (14 crit / 10 hit rating per 1%). `DamageEngine` = base + power ×
   coefficient, talent modifiers (aura 107/108 by class mask), crit, chance to land vs target level, DoTs and
-  channels. Not yet: weapon-based abilities, procs, glancing/dodge/parry, "% of mana" talents.
+  channels. Healing uses the same engine: (base + healing power × coefficient) × (1 + healing talents), direct heals
+  crit for +50%, heals over time and absorbs (aura 69) don't crit, Chain Heal halves per jump, group heals are per
+  target. Healing power = spell power items (stat 45, damage and healing) + healing items (stat 41, aura 135);
+  stat 42 is spell damage only. Not yet: procs, glancing/dodge/parry, "% of mana" talents, healing-received
+  modifiers.
 - **Upgrades**: alternatives ranked by the stats the set already leans on (stat budget prices, e.g. 1% crit = 14
   points), filtered by proficiency and level.
 - **Level a profession**: at every skill point the recipe with the lowest expected material cost per point

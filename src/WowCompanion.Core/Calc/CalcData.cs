@@ -5,7 +5,13 @@ namespace WowCompanion.Core.Calc;
 /// <summary>One spell effect with what the calculator needs, including the class mask talents match on.</summary>
 public sealed record EffectRow(
     int SpellId, int Index, int Effect, int Aura, double BasePoints, double Variance, double SpellCoefficient,
-    double ApCoefficient, int PeriodMs, int TriggerSpell, int Misc0, int[] Mask);
+    double ApCoefficient, int PeriodMs, int TriggerSpell, int Misc0, int[] Mask)
+{
+    /// <summary>Targets a chain effect jumps to (Chain Heal: 3), 0 or 1 for one target.</summary>
+    public int ChainTargets { get; init; }
+    /// <summary>Implicit target (SpellEffect.ImplicitTarget[0]); party heals use 132 or 33.</summary>
+    public int Target { get; init; }
+}
 
 public sealed record GearItem(
     int Id, string Name, int Quality, int IconId, int InventoryType, int Armor,
@@ -22,7 +28,13 @@ public sealed record GearItem(
 
 public sealed record CalcSpell(
     int Id, string Name, string Rank, int SchoolMask, int CastMs, int DurationMs, int PowerCost, int PowerCostPct,
-    int GcdMs, int SpellLevel, int IconId, int[] Mask);
+    int GcdMs, int SpellLevel, int IconId, int[] Mask)
+{
+    /// <summary>Heals or shields (direct heals, heals over time, absorbs).</summary>
+    public bool Heals { get; init; }
+    /// <summary>Deals damage.</summary>
+    public bool Damages { get; init; }
+}
 
 public sealed record RaceInfo(int Id, string Name);
 
@@ -114,7 +126,7 @@ public sealed class CalcDataService(string databasePath)
                 using var command = connection.CreateCommand();
                 command.CommandText = $"""
                     SELECT e.spell_id, e.idx, e.effect, e.aura, e.base_points, e.variance, e.sp_coef, e.ap_coef,
-                           e.period_ms, e.trigger_spell, e.misc0, e.class_mask
+                           e.period_ms, e.trigger_spell, e.misc0, e.class_mask, e.chain_targets, e.target
                     FROM spell_effects e WHERE e.spell_id IN {In(command, chunk)}
                     ORDER BY e.spell_id, e.idx
                     """;
@@ -123,7 +135,11 @@ public sealed class CalcDataService(string databasePath)
                 {
                     var row = new EffectRow(r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetDouble(4),
                         r.GetDouble(5), r.GetDouble(6), r.GetDouble(7), r.GetInt32(8), r.GetInt32(9), r.GetInt32(10),
-                        ParseMask(r.GetString(11)));
+                        ParseMask(r.GetString(11)))
+                    {
+                        ChainTargets = r.GetInt32(12),
+                        Target = r.GetInt32(13),
+                    };
                     if (!result.TryGetValue(row.SpellId, out var list)) result[row.SpellId] = list = [];
                     list.Add(row);
                     if (row.TriggerSpell > 0 && !result.ContainsKey(row.TriggerSpell)) next.Add(row.TriggerSpell);
@@ -134,18 +150,26 @@ public sealed class CalcDataService(string databasePath)
         return result;
     }
 
-    /// <summary>Damage spells of a class learned by the given level, every rank, highest rank first per name.</summary>
-    public IReadOnlyList<CalcSpell> GetDamageSpells(int classId, int level)
+    // Effects the calculator works out: damage (direct, weapon strikes, DoTs, channels) and healing (direct heals,
+    // heals over time, also as area auras like Tranquility, and absorb shields).
+    private const string DamageEffects = "(e.effect IN (2, 17, 31, 58, 121) OR (e.effect = 6 AND e.aura IN (3, 23)))";
+    private const string HealEffects = "(e.effect = 10 OR (e.effect IN (6, 35) AND e.aura IN (8, 69)))";
+
+    /// <summary>
+    /// Damage and healing spells of a class learned by the given level, every rank, highest rank first per name.
+    /// </summary>
+    public IReadOnlyList<CalcSpell> GetCalcSpells(int classId, int level)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
+        command.CommandText = $"""
             SELECT s.id, s.name, s.rank, s.school_mask, s.cast_ms, s.duration_ms, s.power_cost, s.power_cost_pct,
-                   s.gcd_ms, s.spell_level, s.icon_file_id, s.class_mask
+                   s.gcd_ms, s.spell_level, s.icon_file_id, s.class_mask,
+                   EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id AND {HealEffects}),
+                   EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id AND {DamageEffects})
             FROM spells s
             WHERE s.is_class_spell = 1 AND s.class_id = $c AND s.spell_level <= $level
-              AND EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id
-                          AND (e.effect IN (2, 17, 31, 58, 121) OR (e.effect = 6 AND e.aura IN (3, 23))))
+              AND EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id AND ({DamageEffects} OR {HealEffects}))
             ORDER BY s.name, s.spell_level DESC, s.id DESC
             """;
         command.Parameters.AddWithValue("$c", classId);
@@ -157,7 +181,11 @@ public sealed class CalcDataService(string databasePath)
         {
             result.Add(new CalcSpell(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetInt32(3), r.GetInt32(4),
                 r.GetInt32(5), r.GetInt32(6), r.GetInt32(7), r.GetInt32(8), r.GetInt32(9), r.GetInt32(10),
-                ParseMask(r.GetString(11))));
+                ParseMask(r.GetString(11)))
+            {
+                Heals = r.GetInt64(12) != 0,
+                Damages = r.GetInt64(13) != 0,
+            });
         }
         return result;
     }

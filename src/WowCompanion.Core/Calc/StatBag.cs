@@ -95,7 +95,7 @@ public sealed class StatBag
             case 41: Add(Stat.Healing, value); break;
             case 42: Add(Stat.SpellPower, value); break;
             case 43: Add(Stat.Mp5, value); break;
-            case 45: Add(Stat.SpellPower, value); break;
+            case 45: Add(Stat.SpellPower, value); Add(Stat.Healing, value); break; // spell power: damage and healing
             case 46: Add(Stat.Hp5, value); break;
             case 47: Add(Stat.SpellPenetration, value); break;
             case 48: Add(Stat.BlockValue, value); break;
