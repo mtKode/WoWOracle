@@ -186,7 +186,7 @@ public partial class MainWindow : FluentWindow
         UpgradeList.PreviewMouseLeftButtonUp += OnItemListClicked;
 
         // Reminders pop from the tray too, so they reach you while the window is hidden.
-        viewModel.ReminderDue += (title, body) => _tray?.ShowReminder(title, body);
+        viewModel.ReminderDue += OnReminderDue;
         viewModel.RequestNoteTitleFocus += () => Dispatcher.InvokeAsync(() =>
         {
             NoteTitleBox.Focus();
@@ -488,6 +488,34 @@ public partial class MainWindow : FluentWindow
         if (!Topmost) { Topmost = true; Topmost = _vm.AlwaysOnTop; }
         SearchBox.Focus();
         SearchBox.SelectAll();
+        ShowMissedReminders();
+    }
+
+    // ----- Reminders -----
+
+    /// <summary>Reminders that came due while the window was hidden in the tray, oldest first.</summary>
+    private readonly List<string> _missedReminders = [];
+
+    /// <summary>
+    /// A reminder came due: the tray notification, plus the taskbar button flashing until the window is in front.
+    /// Hidden in the tray there is no taskbar button, so it waits for the window to come back.
+    /// </summary>
+    private void OnReminderDue(string title, string body)
+    {
+        _tray?.ShowReminder(title, body);
+        if (!IsVisible) _missedReminders.Add(title.Length > 0 ? title : "Reminder");
+        else if (!IsActive || WindowState == WindowState.Minimized) TaskbarFlash.UntilForeground(this);
+    }
+
+    /// <summary>Back from the tray: flash, and say which reminders came while it was away.</summary>
+    private void ShowMissedReminders()
+    {
+        if (_missedReminders.Count == 0) return;
+        _vm.ToastOnly(_missedReminders.Count == 1
+            ? $"Missed reminder: {_missedReminders[0]}"
+            : $"{_missedReminders.Count} missed reminders: see Notes");
+        _missedReminders.Clear();
+        TaskbarFlash.Times(this, 5);
     }
 
     // ----- Alt-compare -----

@@ -20,7 +20,7 @@ public partial class MainViewModel
     private bool _toastSkipLog;
 
     /// <summary>A toast for something already written to the log in more detail.</summary>
-    private void ToastOnly(string text)
+    public void ToastOnly(string text)
     {
         _toastSkipLog = true;
         try { Toast(text); }

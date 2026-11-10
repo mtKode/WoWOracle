@@ -164,7 +164,8 @@ and their rewards.
 
 ### Notes (Ctrl+9)
 Notes for later (a vendor to visit, a recipe to buy, a reset) with optional **reminders**: "18:30", "tomorrow
-9:00", "in 2h", repeating daily or weekly. Reminders pop up even when the app is hidden in the tray.
+9:00", "in 2h", repeating daily or weekly. Reminders pop up even when the app is hidden in the tray, and the
+taskbar button flashes until you look; missed ones are named when you bring the window back.
 
 ### Journal (Ctrl+0)
 A page per zone: a short lore summary and **Tales of the zone**, the quest chains worth following there (their

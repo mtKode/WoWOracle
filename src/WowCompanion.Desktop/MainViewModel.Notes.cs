@@ -10,7 +10,8 @@ namespace WowCompanion.Desktop;
 /// <summary>
 /// Notes page: things to check, optionally with a reminder ("18:30", "tomorrow 9:00", "in 2h") that can repeat
 /// daily or weekly. Reminders are checked every 20 seconds while the app runs (also from the tray) and show as a
-/// toast plus a tray notification. Edits save when you switch note, leave the page, close the app, or press Save.
+/// toast plus a tray notification, and the taskbar button flashes until the window is in front (the window
+/// flashes on its return when it was hidden in the tray). Edits save when you switch note, leave the page, close the app, or press Save.
 /// </summary>
 public partial class MainViewModel
 {
