@@ -1165,6 +1165,17 @@ local function recordBaseStats()
     }
 end
 
+-- Taking gear off fires one event per slot: record once, a moment after the last one.
+local baseStatsPending = false
+local function baseStatsSoon()
+    if baseStatsPending then return end
+    baseStatsPending = true
+    C_Timer.After(2, function()
+        baseStatsPending = false
+        pcall(recordBaseStats)
+    end)
+end
+
 local function refreshCharacter(what)
     if what == "all" then pcall(recordBaseStats) end
     if what == "skills" or what == "all" then charState.skills = readSkills() end
@@ -1365,6 +1376,7 @@ end
 -- Loot ---------------------------------------------------------------------------------------------
 
 local countedLoot = {} -- corpse/object GUIDs already counted this session (loot windows can open twice)
+local lootReadySeen = false -- this client sends LOOT_READY (then LOOT_OPENED is the same window again)
 
 local function lootText(l)
     local lines = {
@@ -1458,6 +1470,25 @@ local function onLootOpened()
     end
 end
 
+-- Keeps the saved file small (the game reads it at login and writes it at logout, all at once): what the app has
+-- taken in since (it's in Known.lua now) is dropped. Loot sources stay, because they keep counting kills.
+local function pruneSeen()
+    if not hasKnownList() or not (WoWOracleDB and WoWOracleDB.seen) then return end
+    local function prune(store, kind)
+        for id in pairs(store or {}) do
+            if isKnown(kind, id) then store[id] = nil end
+        end
+    end
+    prune(WoWOracleDB.seen.npcs, "placed")
+    prune(WoWOracleDB.seen.vendors, "vendors")
+    prune(WoWOracleDB.seen.items, "items")
+    -- Quests only once the downloaded data has them (the ones the addon reported stay listed as new on purpose,
+    -- so their rewards still fill in; they're few).
+    for id in pairs(WoWOracleDB.quests or {}) do
+        if isKnown("quests", id) then WoWOracleDB.quests[id] = nil end
+    end
+end
+
 local function seenCounts()
     local counts = {}
     for _, kind in ipairs({ "npcs", "vendors", "loot", "items" }) do
@@ -1499,6 +1530,7 @@ events:SetScript("OnEvent", function(_, event, name, extra)
         -- Talent data can arrive a little after login.
         C_Timer.After(8, function() pcall(captureTalentLayout, true) end)
         C_Timer.After(10, function() pcall(scanQuestLog) end)
+        C_Timer.After(20, function() pcall(pruneSeen) end)
         C_Timer.After(6, function() pcall(refreshCharacter, "all") end)
         C_Timer.After(7, function() pcall(saveSelfExport) end)
     elseif event == "PLAYER_LOGOUT" then
@@ -1509,9 +1541,7 @@ events:SetScript("OnEvent", function(_, event, name, extra)
         or event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_LEVEL_UP" then
         selfChanged()
         -- New level: its stats arrive a moment later. Gear off: the naked snapshot (health and mana too).
-        if event == "PLAYER_LEVEL_UP" or event == "PLAYER_EQUIPMENT_CHANGED" then
-            C_Timer.After(event == "PLAYER_LEVEL_UP" and 3 or 1, function() pcall(recordBaseStats) end)
-        end
+        if event == "PLAYER_LEVEL_UP" or event == "PLAYER_EQUIPMENT_CHANGED" then baseStatsSoon() end
     elseif event == "SKILL_LINES_CHANGED" then
         pcall(refreshCharacter, "skills")
     elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" or event == "TRADE_SKILL_LIST_UPDATE"
@@ -1534,7 +1564,9 @@ events:SetScript("OnEvent", function(_, event, name, extra)
     elseif event == "MERCHANT_SHOW" then
         onMerchantShow()
     elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
-        pcall(onLootOpened)
+        -- Clients with LOOT_READY send both for one loot window: read it once.
+        if event == "LOOT_READY" then lootReadySeen = true end
+        if event == "LOOT_READY" or not lootReadySeen then pcall(onLootOpened) end
     end
 end)
 

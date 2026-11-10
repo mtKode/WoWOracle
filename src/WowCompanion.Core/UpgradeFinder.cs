@@ -201,7 +201,7 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
                 JOIN items i ON i.id = s.item_id
                 JOIN quests q ON q.id = s.ref_id
                 WHERE s.kind IN ('quest', 'quest_choice') AND s.ref_id IN {In(command, questIds)}
-                  AND i.quality >= 2 AND i.required_level <= $level AND i.inventory_type > 0
+                  AND i.quality >= 2 AND {UsableBy("i")} AND i.inventory_type > 0
                 """;
             command.Parameters.AddWithValue("$level", maxRequiredLevel);
             using var r = command.ExecuteReader();
@@ -255,6 +255,15 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
             ? new StatBag()
             : StatEngine.Compute(new CharacterInput { ClassId = classId, RaceId = 1, Gear = items, Effects = effects }).GearOnly;
 
+    /// <summary>
+    /// Items a character of $level can wear. Many items carry no required level at all (reputation and raid rewards,
+    /// Naxxramas, Zul'Gurub, "Mark of the Champion": about a thousand of them), and some new Forever items say level 1
+    /// at item level 30-45. For those (required level 0 or 1) the item level stands in: at most 5 above the character's
+    /// level, like the rest of the gear around that level.
+    /// </summary>
+    private static string UsableBy(string table) =>
+        $"(({table}.required_level > 1 AND {table}.required_level <= $level) OR ({table}.required_level <= 1 AND {table}.item_level <= $level + 5))";
+
     private List<int> Candidates(IReadOnlyList<int> types, UpgradeRequest request)
     {
         using var connection = Open();
@@ -262,7 +271,7 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         var typeList = string.Join(',', types);
         command.CommandText = $"""
             SELECT id, class_id, subclass_id, inventory_type, allowable_class FROM items
-            WHERE inventory_type IN ({typeList}) AND required_level <= $level AND quality >= 2 AND {ItemVisibility.Clause("id")}
+            WHERE inventory_type IN ({typeList}) AND {UsableBy("items")} AND quality >= 2 AND {ItemVisibility.Clause("id")}
             ORDER BY item_level DESC LIMIT 1500
             """;
         command.Parameters.AddWithValue("$level", request.Level);
