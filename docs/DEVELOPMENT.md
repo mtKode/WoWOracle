@@ -15,7 +15,9 @@ dotnet run --project src\WowCompanion.Desktop
 `.\publish.ps1` builds `dist\WoWOracle-<version>.zip`: one self-contained `WoW Oracle.exe` (no .NET needed), the
 addon (`addon\WoWOracle`, with the empty `Known.lua` placeholder), `packaging\README.txt`, `LICENSE.txt` and
 `THIRD-PARTY-NOTICES.md`. The version comes from `<Version>` in `Directory.Build.props`. `-IncludeFont` copies
-`font\*.ttf` into the zip (Friz Quadrata is licensed: private copies only).
+`font\*.ttf` into the zip (Friz Quadrata is licensed: private copies only). The unzipped copy is `dist\WoWOracle`, a
+fixed folder to run and test the build from; each run removes the earlier builds in `dist`, so only the latest folder
+and zip are there. Close the app first if it runs from `dist\WoWOracle` (the script stops and says so).
 
 ### Releases
 

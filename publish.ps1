@@ -1,5 +1,6 @@
 <#
-  Builds the shareable WoW Oracle package:  dist\WoWOracle-<version>.zip
+  Builds the shareable WoW Oracle package:  dist\WoWOracle-<version>.zip, unzipped in dist\WoWOracle to run locally
+  (earlier builds in dist are removed, so only the latest is there).
   One self-contained exe (no .NET install needed on the friend's PC), the in-game addon (addon\WoWOracle) and a short readme.
 
   Usage:   .\publish.ps1                 # Friz Quadrata NOT included (it's Blizzard's licensed font)
@@ -15,10 +16,15 @@ $version = $Version
 if (-not $version) { $version = ([xml](Get-Content .\Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1 }
 if (-not $version) { $version = 'dev' }
 
-$stage = Join-Path $PSScriptRoot "dist\WoWOracle-$version"
-$zip   = Join-Path $PSScriptRoot "dist\WoWOracle-$version.zip"
-if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-if (Test-Path $zip)   { Remove-Item $zip -Force }
+# Only the latest build is kept: one app folder with a fixed name (dist\WoWOracle, so you start the same exe and the
+# Start menu shortcut keeps working after every build) and one zip. Older WoWOracle* folders and zips go.
+$dist  = Join-Path $PSScriptRoot 'dist'
+$stage = Join-Path $dist 'WoWOracle'
+$zip   = Join-Path $dist "WoWOracle-$version.zip"
+$running = Get-Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -and $_.Path.StartsWith($dist + [IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) }
+if ($running) { throw "WoW Oracle is running from $($running[0].Path). Close it (tray icon, Exit) and run this again." }
+if (Test-Path $dist) { Get-ChildItem $dist -Filter 'WoWOracle*' | Remove-Item -Recurse -Force }
 
 Write-Host "Publishing WoW Oracle $version ..." -ForegroundColor Yellow
 dotnet publish .\src\WowCompanion.Desktop -c Release -r win-x64 --self-contained true `
