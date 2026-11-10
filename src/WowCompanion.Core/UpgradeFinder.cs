@@ -259,10 +259,13 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
     /// Items a character of $level can wear. Many items carry no required level at all (reputation and raid rewards,
     /// Naxxramas, Zul'Gurub, "Mark of the Champion": about a thousand of them), and some new Forever items say level 1
     /// at item level 30-45. For those (required level 0 or 1) the item level stands in: at most 5 above the character's
-    /// level, like the rest of the gear around that level.
+    /// level, like the rest of the gear around that level. At max level there is no cap: the raid gear without a
+    /// required level (item level 66-90) is exactly what a level 60 character is after.
     /// </summary>
     private static string UsableBy(string table) =>
-        $"(({table}.required_level > 1 AND {table}.required_level <= $level) OR ({table}.required_level <= 1 AND {table}.item_level <= $level + 5))";
+        $"(({table}.required_level > 1 AND {table}.required_level <= $level) OR ({table}.required_level <= 1 AND ({table}.item_level <= $level + 5 OR $level >= {MaxLevel})))";
+
+    private const int MaxLevel = 60;
 
     private List<int> Candidates(IReadOnlyList<int> types, UpgradeRequest request)
     {
