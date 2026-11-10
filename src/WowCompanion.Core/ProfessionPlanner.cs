@@ -65,6 +65,10 @@ public sealed class ProfessionPlanner(string databasePath)
     {
         public int Green => (Yellow + Grey) / 2;
         public bool HasRange => Yellow > 0 && Grey > Yellow;
+        /// <summary>A trainer recipe whose learn skill is a guess (its yellow point; the real one is often lower).</summary>
+        public bool Estimated => SkillSource == "estimate";
+        /// <summary>The earliest a guessed recipe is likely to be taught: 20 below yellow (most are 0-45 below).</summary>
+        public int EarliestLearn => Estimated ? Math.Max(1, Yellow - 20) : Learn;
     }
 
     private sealed record ItemInfo(string Name, int Quality, int Icon, int ClassId, bool Vendor, int BuyPrice, int SellPrice);
@@ -166,6 +170,7 @@ public sealed class ProfessionPlanner(string databasePath)
         var notes = new List<PlanNote>();
         var steps = new List<(Recipe Recipe, int From, int To, double Crafts, string Color)>();
         Recipe? current = null;
+        var guessedEarly = new HashSet<int>();
         var skill = Math.Max(1, options.FromSkill);
         var target = Math.Clamp(options.ToSkill, skill, 300);
 
@@ -178,8 +183,14 @@ public sealed class ProfessionPlanner(string databasePath)
             var options1 = usable.Where(r => r.Learn <= skill && r.Grey > skill).ToList();
             if (options1.Count == 0)
             {
-                notes.Add(new PlanNote(skill, $"No usable recipe at {skill}: allow vendor or drop recipes, or check the trainer."));
-                break;
+                // Nothing surely learnable yet: a trainer recipe whose learn skill is a guess may well be (most are
+                // taught before their yellow point). Use it, and say to check the trainer.
+                options1 = usable.Where(r => r.Estimated && r.EarliestLearn <= skill && r.Grey > skill).ToList();
+                if (options1.Count == 0)
+                {
+                    notes.Add(new PlanNote(skill, $"No usable recipe at {skill}: allow vendor or drop recipes, or check the trainer."));
+                    break;
+                }
             }
             double PerPoint(Recipe r) => r.Reagents.Sum(x => x.Qty * Cost(x.Item)) / Math.Max(0.01, Chance(r, skill));
             var best = options1.MinBy(PerPoint)!;
@@ -196,6 +207,8 @@ public sealed class ProfessionPlanner(string databasePath)
             {
                 steps.Add((best, skill, skill + 1, crafts, Color(best, skill)));
             }
+            if (best.Learn > skill && guessedEarly.Add(best.SpellId))
+                notes.Add(new PlanNote(skill, $"At {skill}: {best.Name} is used before its estimated learn skill ({best.Learn}), because nothing else is learnable yet. Check that the trainer offers it; opening the trainer with the addon on records the real skill."));
             current = best;
             skill++;
         }

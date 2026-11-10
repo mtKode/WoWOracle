@@ -513,7 +513,7 @@ public static partial class GameDatabaseBuilder
         foreach (var row in CsvTable.Read(csv("SkillLine")))
             lines[row.GetInt("ID")] = (row.Get("DisplayName_lang"), row.GetInt("CategoryID"));
 
-        var abilities = new Dictionary<int, (int Skill, int Min, int Low, int High)>();
+        var abilities = new Dictionary<int, (int Skill, int Min, int Low, int High, int Acquire)>();
         foreach (var row in CsvTable.Read(csv("SkillLineAbility")))
         {
             var skill = row.GetInt("SkillLine");
@@ -521,7 +521,7 @@ public static partial class GameDatabaseBuilder
             if (line.Category is not (9 or 11)) continue;
             if (line.Name.Contains("[DNT]", StringComparison.OrdinalIgnoreCase)) continue;
             abilities.TryAdd(row.GetInt("Spell"), (skill, row.GetInt("MinSkillLineRank"),
-                row.GetInt("TrivialSkillLineRankLow"), row.GetInt("TrivialSkillLineRankHigh")));
+                row.GetInt("TrivialSkillLineRankLow"), row.GetInt("TrivialSkillLineRankHigh"), row.GetInt("AcquireMethod")));
         }
 
         // Effect 24 = "create item".
@@ -561,8 +561,8 @@ public static partial class GameDatabaseBuilder
         using var insertRecipe = connection.CreateCommand();
         insertRecipe.Transaction = transaction;
         insertRecipe.CommandText = """
-            INSERT INTO recipes (spell_id, name, skill_line_id, profession, min_skill, trivial_low, trivial_high, created_item_id, created_count)
-            VALUES ($spell, $name, $skill, $profession, $min, $low, $high, $item, $count)
+            INSERT INTO recipes (spell_id, name, skill_line_id, profession, min_skill, trivial_low, trivial_high, created_item_id, created_count, skill_source)
+            VALUES ($spell, $name, $skill, $profession, $min, $low, $high, $item, $count, $source)
             """;
         var pSpell = insertRecipe.Parameters.Add("$spell", SqliteType.Integer);
         var pName = insertRecipe.Parameters.Add("$name", SqliteType.Text);
@@ -573,6 +573,7 @@ public static partial class GameDatabaseBuilder
         var pHigh = insertRecipe.Parameters.Add("$high", SqliteType.Integer);
         var pItem = insertRecipe.Parameters.Add("$item", SqliteType.Integer);
         var pCount = insertRecipe.Parameters.Add("$count", SqliteType.Integer);
+        var pSource = insertRecipe.Parameters.Add("$source", SqliteType.Text);
 
         using var insertReagent = connection.CreateCommand();
         insertReagent.Transaction = transaction;
@@ -595,7 +596,10 @@ public static partial class GameDatabaseBuilder
             pName.Value = name;
             pSkill.Value = ability.Skill;
             pProfession.Value = lines[ability.Skill].Name;
-            pMin.Value = ability.Min;
+            // AcquireMethod 1: learned together with the profession itself, so known from skill 1.
+            var starter = ability.Acquire == 1;
+            pMin.Value = starter ? 1 : ability.Min;
+            pSource.Value = starter ? "starter" : "trainer";
             pLow.Value = ability.Low;
             pHigh.Value = ability.High;
             pItem.Value = createdItem;
@@ -616,9 +620,13 @@ public static partial class GameDatabaseBuilder
 
     /// <summary>
     /// The client doesn't store the skill needed to learn a recipe (MinSkillLineRank is 1 for everything).
-    /// Recipes taught by an item (Pattern:, Plans:, Formula: ...) get the item's RequiredSkillRank. Trainer
-    /// recipes get an estimate of 20 below the yellow point, marked as such. TrivialSkillLineRankLow is where
-    /// the recipe turns yellow and TrivialSkillLineRankHigh where it turns grey; green is halfway.
+    /// Recipes taught by an item (Pattern:, Plans:, Formula: ...) get the item's RequiredSkillRank; the ones learned
+    /// with the profession ("starter") skill 1. Other trainer recipes get their yellow point as an estimate, marked as
+    /// such: compared with Classic's trainer lists the real skill is anywhere from 49 below yellow to 5 above, and
+    /// yellow is the guess that almost never says "learnable" too early (the planner falls back to earlier when it
+    /// has nothing else). Trainer windows read by the addon replace the estimate with the real number
+    /// (TrainerSkillStore). TrivialSkillLineRankLow is where the recipe turns yellow and TrivialSkillLineRankHigh
+    /// where it turns grey; green is halfway.
     /// </summary>
     private static void FillRecipeRequirements(SqliteConnection connection, SqliteTransaction transaction)
     {
@@ -634,12 +642,12 @@ public static partial class GameDatabaseBuilder
                              WHERE e.spell_id = recipes.spell_id AND e.trigger_type = 6 AND i.required_skill_rank > 0),
                 skill_source = 'recipe'
             WHERE taught_by > 0;
-            -- Trainer recipes: about 20 below yellow. When yellow and grey are the same number (smelting, curing,
-            -- some engineering parts) that number is the skill the recipe is learned at.
+            -- Other trainer recipes: at yellow. When yellow and grey are the same number (smelting, curing, some
+            -- engineering parts) that number is the skill the recipe is learned at.
             UPDATE recipes SET
-                min_skill = CASE WHEN trivial_low = trivial_high THEN trivial_low ELSE MAX(1, trivial_low - 20) END,
+                min_skill = trivial_low,
                 skill_source = 'estimate'
-            WHERE taught_by = 0 AND trivial_low > 0;
+            WHERE taught_by = 0 AND trivial_low > 0 AND skill_source <> 'starter';
             """;
         command.ExecuteNonQuery();
     }

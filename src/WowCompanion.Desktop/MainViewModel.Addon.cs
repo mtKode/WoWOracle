@@ -7,7 +7,8 @@ namespace WowCompanion.Desktop;
 /// What the WoWOracle addon saved in game (SavedVariables\WoWOracle.lua), read on every database load:
 /// - quests: kept in user.sqlite (so the addon file can be cleared) and added to the game data when it lacks them;
 /// - talent trees: a class's tree replaces the downloaded one only when the game client's build is newer;
-/// - sightings: new NPCs, vendors and loot (MainViewModel.Seen.cs).
+/// - sightings: new NPCs, vendors and loot (MainViewModel.Seen.cs);
+/// - trainer windows: the skill each recipe is taught at, which the game data lacks.
 /// wago.tools and the CMaNGOS data stay the master; the addon only fills gaps.
 /// </summary>
 public partial class MainViewModel
@@ -120,6 +121,9 @@ public partial class MainViewModel
     {
         /// <summary>Class/race/level base stat rows recorded for the first time.</summary>
         public int NewBaseStats { get; init; }
+
+        /// <summary>Recipes whose learn skill in the game data now comes from a trainer window.</summary>
+        public int TrainerRecipes { get; init; }
     }
 
     private readonly BaseStatsStore _baseStats = new(paths.UserDbPath);
@@ -136,6 +140,27 @@ public partial class MainViewModel
         catch (Exception)
         {
             return 0;
+        }
+    }
+
+    private readonly TrainerSkillStore _trainerSkills = new(paths.UserDbPath);
+
+    /// <summary>
+    /// "!WOWORACLE-TRAINER 1" blocks into user.sqlite, then all trainer skills into the game data's recipes.
+    /// Returns how many recipes changed there (a fresh game database gets them all again).
+    /// </summary>
+    private int ApplyTrainerSkills(string gameDbPath, IEnumerable<string> addonTexts)
+    {
+        try
+        {
+            var read = addonTexts.SelectMany(t => AddonSavedData.Blocks(t, TrainerRecipe.Marker))
+                .SelectMany(TrainerRecipe.Parse).ToList();
+            if (read.Count > 0) _trainerSkills.Save(read);
+            return TrainerSkillStore.ApplyTo(gameDbPath, _trainerSkills.All());
+        }
+        catch (Exception)
+        {
+            return 0; // the estimates stay
         }
     }
 
@@ -163,6 +188,7 @@ public partial class MainViewModel
         var quests = InjectLearnedQuests(gameDbPath);
         var newSightings = LearnAddonSightings(texts);
         var sightings = InjectSightings(gameDbPath); // new NPCs, vendors, loot
+        var trainerRecipes = ApplyTrainerSkills(gameDbPath, texts);
         (List<string> Classes, int Build) talentTrees = talents ? ApplyAddonTalents(gameDbPath, version, texts) : (new List<string>(), 0);
         // After the gaps are filled, so the addon doesn't record them again; only rebuilt when something changed.
         var changed = items > 0 || quests.Added.Count + quests.Updated.Count > 0 || sightings.Any;
@@ -170,6 +196,7 @@ public partial class MainViewModel
         return new AddonPassResult(texts, newQuests, items, quests, newSightings, sightings, talentTrees.Classes, talentTrees.Build, known)
         {
             NewBaseStats = newBase,
+            TrainerRecipes = trainerRecipes,
         };
     }
 
@@ -210,6 +237,8 @@ public partial class MainViewModel
             Log($"Base stats from the game: {Plural(r.NewBaseStats, "new class/race/level")} recorded (the Calculator uses them instead of its estimate).", "addon");
             if (_characterLoaded) Recalculate();
         }
+        if (r.TrainerRecipes > 0)
+            Log($"Trainer skills from the game: {Plural(r.TrainerRecipes, "recipe")} now show the skill the trainer teaches them at (the profession planner uses it).", "addon");
         ReportKnownIds(r.Known);
 
         var parts = new List<string>();

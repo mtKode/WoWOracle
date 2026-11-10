@@ -6,7 +6,7 @@ before launch).
 
 ## 1. Setup and addon install
 - [ ] Start the app. The bar above the search box shows `_forever_ (Forever)   not installed` → **Install addon**.
-- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.9.1` in green.
+- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.10.0` in green.
 - [ ] In game, the addon is listed and **not** "out of date". The TOC says `## Interface: 16001` (beta). If the
       release client has a new interface number (`/dump select(4, GetBuildInfo())`), update the TOC, rebuild, Update addon.
 - [ ] The leftover `_classic_beta_` folder is ignored (shown nowhere). Delete it if Battle.net left it behind.
@@ -48,6 +48,13 @@ before launch).
 - [ ] Calculator with that class, race and level and blank naked stats: the note says "Naked stats recorded in game at level N".
 - [ ] Take all gear off once: `/oracle base` mentions health and mana; **Copy recorded** gives CSV with naked health/mana.
 - [ ] Make the class/race combinations you're curious about (Tauren Warrior…) and log each in once.
+
+## 5d. Trainer skills (addon 0.10.0)
+- [ ] Open a profession trainer, then `/oracle trainer`: "read N recipes from this trainer". The trainer window's
+      filter (available / unavailable / used) is the same as before you opened it.
+- [ ] `/oracle sync` → Chronicle: "Trainer skills from the game: N recipes now show the skill the trainer teaches them at".
+- [ ] That trainer's recipes show their skill without **~** on the item page; Level a profession uses them.
+- [ ] Compare a few against the trainer's "Requires <profession> (N)" line.
 
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.

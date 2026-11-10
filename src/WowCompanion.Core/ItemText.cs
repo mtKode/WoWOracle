@@ -169,8 +169,10 @@ public static class ItemText
         if (yellow == grey)
             return $"Learned at {Math.Max(learn, yellow)}. The game data has no yellow/green/grey range for this recipe (smelting and similar), so it isn't shown.";
         var green = (yellow + grey) / 2;
-        var start = estimated ? $"~{learn}" : learn.ToString();
-        return $"Orange {start}-{Math.Max(learn, yellow - 1)} (always +1) · Yellow {yellow}-{green - 1} · Green {green}-{grey - 1} · Grey {grey}+";
+        var bands = $"Yellow {yellow}-{green - 1} · Green {green}-{grey - 1} · Grey {grey}+";
+        if (estimated)
+            return $"Trainer skill not in the game data: assumed {learn}, often lower (orange, always +1, until then). Opening the trainer with the addon on records the real skill. · {bands}";
+        return $"Orange {learn}-{Math.Max(learn, yellow - 1)} (always +1) · {bands}";
     }
 
     /// <summary>"1.5 sec", "2 min".</summary>

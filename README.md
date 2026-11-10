@@ -56,6 +56,7 @@ updates). In game, `/reload` or restart, and tick *WoW Oracle* in the AddOns lis
 | **Your gear and talents** | Kept as a gear set and a talent set named exactly after your character. Sets with any other name are never touched, so copy one ("… Alt SP") to experiment. |
 | **Base stats per class, race and level** | Your naked base stats (Str, Agi, Sta, Int, Spi without gear or buffs) at every level you reach, for every character. The Calculator uses them instead of its estimate (in between recorded levels it fills the gap). Take everything off once to also record base health and mana. **Copy recorded** in the Calculator gives the whole table as CSV. |
 | **Professions, recipes, bags and bank** | Feed the profession planner: your skill, the recipes you know and the materials you have. Open each profession window and the bank once. |
+| **Trainer skills** | The skill each profession trainer teaches a recipe at, read whenever you open a trainer. The game data doesn't have it, so until then the app assumes a recipe's yellow skill (shown with **~**). |
 | **New quests, NPCs, vendors, loot and items** | Things the app's data doesn't have yet (new Forever zones, quests and recipes) are recorded once and added to the app: quest givers and rewards, NPCs on the map, what vendors sell, what mobs drop with a drop chance from your own kills, and the names and stats of new items you carry, craft, loot or see at a vendor. Things the app already knows are not recorded. |
 
 The game writes the addon's data when you **log out** or **/reload**; the app picks it up within seconds and says
@@ -69,6 +70,7 @@ what came in, in **Oracle's Chronicle** (the scroll at the bottom left).
 | `/oracle` | Copy your character (also the **Oracle** button on your character window) |
 | `/oracle t` | Copy the player you're targeting (also the **Oracle** button on the inspect window) |
 | `/oracle base` | Your base stats right now, and how many class/race/level combinations are saved |
+| `/oracle trainer` | Reads the open trainer again and says how many recipe skills are saved |
 | `/oracle quests` · `/oracle seen` | How many new quests / NPCs, vendors and loot sources are waiting for the app |
 | `/oracle debug` | Prints what the client supports; handy for bug reports |
 
@@ -129,7 +131,9 @@ grey). Filter by recipe or reagent name, sort, and press **+ Craft list** (or Ct
 - **Level a profession**: pick a profession and a goal, and the Oracle plans the cheapest route skill point by
   skill point, with the shopping list (need · have · still to get). With the addon, your skill, known recipes
   and bag/bank contents fill in by themselves. Options: vendor recipes, found recipes, making sub-parts
-  (bolts, cured leather…) and smelting your own bars. Trainer checkpoints are marked.
+  (bolts, cured leather…) and smelting your own bars. Trainer checkpoints are marked. A trainer recipe's learn skill
+  is only known once you've opened that trainer with the addon on; before that the plan assumes its yellow skill,
+  and says so when it has to use one earlier.
 
 ### Spells (Ctrl+4)
 Every class spell with its real numbers per rank: damage, cost, cast time, cooldown, range, effects. Filter by name

@@ -127,6 +127,11 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
 - **Level a profession**: at every skill point the recipe with the lowest expected material cost per point
   (skill-up chance 100% while orange, then (grey − skill) / (grey − yellow)), materials at vendor price, what you
   own counts cheaper, cooldown recipes left out, stack sizes ("makes N each") respected.
+- **Learn skills** (`recipes.min_skill`, `skill_source`): `recipe` = the teaching item's required skill; `starter` =
+  learned with the profession (`SkillLineAbility.AcquireMethod` 1), skill 1; `trainer` = read from a trainer window by
+  the addon; `estimate` = the yellow point. The client has no learn skill for trainer recipes, and against Classic's
+  trainer lists the real one is 49 below to 5 above yellow, so yellow almost never claims "learnable" too early.
+  When nothing is learnable at a skill, the planner falls back to estimated recipes from 20 below yellow, with a note.
 
 ## The addon and the app
 
@@ -143,6 +148,7 @@ Everything the addon saves is a text block: a marker line, `key=value` lines, `!
 | `!WOWORACLE-SELF 1` | Your own export, saved by itself | Own gear sync (sets named exactly after the character) |
 | `!WOWORACLE-CHAR 1` | Profession ranks, known recipes, bag and bank counts | Crafting planner |
 | `!WOWORACLE-TALENTS 1` | The live talent tree: `node=id;x;y;maxRanks;spell;icon;unlocks;name;description` | Used only when the client build is newer than the wago.tools data |
+| `!WOWORACLE-TRAINER 1` | One per profession, all trainers merged: `profession=`, `recipe=skill;itemId;level;name` (the trainer window's skill requirement) | `trainer_skills` (user.sqlite) → `recipes.min_skill`, `skill_source = 'trainer'` |
 | `!WOWORACLE-BASE 1` | Base stats per class/race/level: `base=class;race;level;str;agi;sta;int;spi` (paper-doll stat minus gear and buffs), `vitals=health;mana;naked` | `base_stats` (user.sqlite) → Calculator naked stats (exact level, else interpolated) |
 | `!WOWORACLE-QUEST 1` | Quests the data lacks: giver, where, rewards, `itemdata=` | `learned_quests` → game database |
 | `!WOWORACLE-NPC 1` | NPCs without a known spot: name, level, rank, reaction, `at=zone;x;y` | `seen_data` → game database |

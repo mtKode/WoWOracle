@@ -121,6 +121,17 @@ public static class UserDatabase
             PRIMARY KEY (class_id, race_id, level)
         );
         """,
+        """
+        CREATE TABLE trainer_skills (
+            profession TEXT NOT NULL,
+            name TEXT NOT NULL,
+            skill INTEGER NOT NULL,
+            item_id INTEGER NOT NULL DEFAULT 0,
+            level INTEGER NOT NULL DEFAULT 0,
+            updated_utc TEXT NOT NULL,
+            PRIMARY KEY (profession, name)
+        );
+        """,
     ];
 
     public static void Initialize(string path)

@@ -20,10 +20,10 @@ public static class SkillBands
         // Same yellow and grey: the data only holds the learn skill, not the skill-up range.
         if (yellow == grey) return ($"learn at {(estimated ? "~" : "")}{Math.Max(learn, yellow)}", "", "", "range not in the game data");
         var green = (yellow + grey) / 2;
-        var start = estimated ? $"~{learn}" : learn.ToString();
         string Range(string from, int fromValue, int to) => to >= fromValue ? $"{from}-{to}" : "";
         return (
-            Range(start, learn, Math.Max(learn, yellow - 1)),
+            // A guessed learn skill (the yellow point): when the orange part starts isn't known.
+            estimated ? $"learn ~{learn}" : Range(learn.ToString(), learn, Math.Max(learn, yellow - 1)),
             Range(yellow.ToString(), yellow, green - 1),
             Range(green.ToString(), green, grey - 1),
             $"{grey}+");

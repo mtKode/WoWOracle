@@ -1165,6 +1165,61 @@ local function recordBaseStats()
     }
 end
 
+-- ------------------------------------------------------------------------------------------------
+-- Trainer windows: the skill each profession recipe is taught at. The client data doesn't hold it, so the app
+-- otherwise guesses. Saved per profession in WoWOracleDB.trainer[profession] (all trainers merged), recipe by name.
+-- ------------------------------------------------------------------------------------------------
+
+local trainerFilters = { "available", "unavailable", "used" }
+
+local function trainerText(profession, recipes)
+    local _, build = GetBuildInfo()
+    local lines = { "!WOWORACLE-TRAINER 1", "profession=" .. clean(profession) }
+    for name, value in pairs(recipes) do lines[#lines + 1] = "recipe=" .. value .. ";" .. name end
+    lines[#lines + 1] = "build=" .. clean(build)
+    lines[#lines + 1] = "time=" .. time()
+    lines[#lines + 1] = "!END"
+    return table.concat(lines, "\n")
+end
+
+local function readTrainer()
+    if not GetNumTrainerServices then return 0 end
+    -- Every service, also the ones the trainer window's filter hides (put back afterwards).
+    local switched = {}
+    if GetTrainerServiceTypeFilter and SetTrainerServiceTypeFilter then
+        for _, kind in ipairs(trainerFilters) do
+            if not try(GetTrainerServiceTypeFilter, kind) then
+                switched[#switched + 1] = kind
+                try(SetTrainerServiceTypeFilter, kind, 1)
+            end
+        end
+    end
+    WoWOracleDB = WoWOracleDB or {}
+    WoWOracleDB.trainer = WoWOracleDB.trainer or {}
+    local touched, count = {}, 0
+    for i = 1, (try(GetNumTrainerServices)) or 0 do
+        local name, _, category = try(GetTrainerServiceInfo, i)
+        if name and category ~= "header" then
+            local profession, rank = try(GetTrainerServiceSkillReq, i)
+            rank = tonumber(rank) or 0
+            if type(profession) == "string" and profession ~= "" and rank > 0 then
+                local store = WoWOracleDB.trainer[profession] or { recipes = {} }
+                WoWOracleDB.trainer[profession] = store
+                store.recipes[clean(name)] = ("%d;%d;%d"):format(rank,
+                    itemIdOf(try(GetTrainerServiceItemLink, i)) or 0, tonumber((try(GetTrainerServiceLevelReq, i))) or 0)
+                touched[profession] = true
+                count = count + 1
+            end
+        end
+    end
+    for _, kind in ipairs(switched) do try(SetTrainerServiceTypeFilter, kind, 0) end
+    for profession in pairs(touched) do
+        local store = WoWOracleDB.trainer[profession]
+        store.text = trainerText(profession, store.recipes)
+    end
+    return count
+end
+
 -- Taking gear off fires one event per slot: record once, a moment after the last one.
 local baseStatsPending = false
 local function baseStatsSoon()
@@ -1514,7 +1569,7 @@ for _, e in ipairs({ "SKILL_LINES_CHANGED", "TRADE_SKILL_SHOW", "TRADE_SKILL_UPD
                      "CRAFT_UPDATE", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED", "PLAYERBANKSLOTS_CHANGED",
                      "PLAYER_EQUIPMENT_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED",
                      "PLAYER_LEVEL_UP", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "MERCHANT_SHOW", "LOOT_READY",
-                     "LOOT_OPENED" }) do
+                     "LOOT_OPENED", "TRAINER_SHOW" }) do
     pcall(events.RegisterEvent, events, e) -- some don't exist on every client
 end
 events:SetScript("OnEvent", function(_, event, name, extra)
@@ -1563,6 +1618,8 @@ events:SetScript("OnEvent", function(_, event, name, extra)
         pcall(sawUnit, "mouseover")
     elseif event == "MERCHANT_SHOW" then
         onMerchantShow()
+    elseif event == "TRAINER_SHOW" then
+        C_Timer.After(0.3, function() pcall(readTrainer) end) -- the list fills right after the window opens
     elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
         -- Clients with LOOT_READY send both for one loot window: read it once.
         if event == "LOOT_READY" then lootReadySeen = true end
@@ -1599,6 +1656,14 @@ SlashCmdList.WOWORACLE = function(msg)
         end
         say(("base stats now (str agi sta int spi): %s. Saved for %d class/race/level combinations%s."):format(
             table.concat(parts, " "), n, wearsNothing() and " (naked: health and mana too)" or ""))
+    elseif msg == "trainer" then
+        local ok, n = pcall(readTrainer)
+        local known = 0
+        for _, store in pairs(WoWOracleDB.trainer or {}) do
+            for _ in pairs(store.recipes or {}) do known = known + 1 end
+        end
+        say(ok and n > 0 and ("read %d recipes from this trainer; %d saved in all."):format(n, known)
+            or ("open a profession trainer first; %d recipes saved so far."):format(known))
     elseif msg == "seen clear" then
         WoWOracleDB.seen = {}
         say("saved NPCs, vendors and loot cleared (the app keeps what it already read).")
@@ -1611,6 +1676,6 @@ SlashCmdList.WOWORACLE = function(msg)
     elseif msg == "talents" then
         if captureTalentLayout(false) == 0 then say("couldn't read the talent tree.") end
     else
-        say("/oracle (you), /oracle t (inspect your target), /oracle sync (save now for the app), /oracle talents, /oracle quests [clear], /oracle seen [clear], /oracle base, /oracle debug")
+        say("/oracle (you), /oracle t (inspect your target), /oracle sync (save now for the app), /oracle talents, /oracle quests [clear], /oracle seen [clear], /oracle base, /oracle trainer, /oracle debug")
     end
 end
