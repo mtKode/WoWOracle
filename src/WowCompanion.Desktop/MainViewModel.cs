@@ -272,6 +272,7 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
         UseMaps(path);
         SyncOwnGear(addonTexts); // your own gear from the addon, once classes and gear sets are loaded
         UnhideSeenItems(path);
+        _ = LoadAuctionPricesAsync(); // Auctionator's prices, if it's installed
 
         if (EffectiveQuery.Length > 0 && EffectiveQuery != _chosenQuery) _ = RunSearchAsync(EffectiveQuery);
     }
@@ -493,6 +494,9 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
         }
     }
 
+    /// <summary>The shopping list at auction prices (Auctionator), "" without prices.</summary>
+    [ObservableProperty] private string _shoppingCost = "";
+
     [RelayCommand]
     private void CopyShopping()
     {
@@ -513,6 +517,7 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
         var entries = _craft.Load();
         CraftList.Clear();
         Shopping.Clear();
+        ShoppingCost = "";
 
         if (entries.Count == 0 || _recipes is null)
         {
@@ -541,7 +546,7 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
             });
         }
 
-        var totals = new Dictionary<int, (string Name, int Quantity, int Quality)>();
+        var totals = new Dictionary<int, (string Name, int Quantity, int Quality)>(); // by item id
         foreach (var reagent in _recipes.GetReagentRows(ids))
         {
             if (!quantities.TryGetValue(reagent.SpellId, out var crafts) || done.Contains(reagent.SpellId)) continue;
@@ -550,8 +555,12 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
                 ? (reagent.Name, existing.Quantity + add, reagent.Quality)
                 : (reagent.Name, add, reagent.Quality);
         }
-        foreach (var (name, quantity, quality) in totals.Values.OrderBy(t => t.Name))
-            Shopping.Add(new ShoppingRow(name, quantity, ItemQuality.BrushFor(quality)));
+        foreach (var (itemId, (name, quantity, quality)) in totals.OrderBy(t => t.Value.Name))
+            Shopping.Add(new ShoppingRow(name, quantity, ItemQuality.BrushFor(quality), itemId));
+        var priced = Shopping.Where(s => s.PriceText.Length > 0).ToList();
+        ShoppingCost = priced.Count == 0 ? "" :
+            $"≈ {ItemText.Money(priced.Sum(s => AuctionPrices.Unit(s.ItemId) * s.Quantity))} at the auction house"
+            + (priced.Count < Shopping.Count ? $" ({Shopping.Count - priced.Count} without a price)" : "");
 
         CraftIsEmpty = CraftList.Count == 0;
         var left = entries.Where(e => !e.Done).Sum(e => e.Quantity);

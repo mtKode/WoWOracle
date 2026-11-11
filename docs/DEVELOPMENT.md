@@ -126,8 +126,14 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   modifiers.
 - **Upgrades**: alternatives ranked by the stats the set already leans on (stat budget prices, e.g. 1% crit = 14
   points), filtered by proficiency and level.
+- **Auction prices** (`AuctionatorData`, optional): `WTF\Account\*\SavedVariables\Auctionator.lua`,
+  `AUCTIONATOR_PRICE_DATABASE`: one Lua string per realm, each a CBOR map of item id → `m` (lowest price at the last
+  scan, copper), `h` / `l` (high / low per scan day, days since 2020-01-01), `a` (count up per day). Read at start-up
+  and when the file changes; the newest realm is used unless one is picked (setting `auction_realm`).
+  `Desktop\AuctionPrices` holds the current prices for every view.
 - **Level a profession**: at every skill point the recipe with the lowest expected material cost per point
-  (skill-up chance 100% while orange, then (grey − skill) / (grey − yellow)), materials at vendor price, what you
+  (skill-up chance 100% while orange, then (grey − skill) / (grey − yellow)), materials at vendor price, else their
+  auction price when Auctionator has one, else vendor value as a stand-in, what you
   own counts cheaper, cooldown recipes left out, stack sizes ("makes N each") respected.
 - **Learn skills** (`recipes.min_skill`, `skill_source`): `recipe` = the teaching item's required skill; `starter` =
   learned with the profession (`SkillLineAbility.AcquireMethod` 1), skill 1; `trainer` = read from a trainer window by

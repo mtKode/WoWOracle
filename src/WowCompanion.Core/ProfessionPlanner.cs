@@ -10,7 +10,8 @@ public sealed record PlanOptions(
     bool MakeSubParts = true,
     bool Smelt = false,
     IReadOnlySet<int>? KnownRecipes = null,
-    IReadOnlyDictionary<int, int>? Owned = null);
+    IReadOnlyDictionary<int, int>? Owned = null,
+    IReadOnlyDictionary<int, long>? AuctionPrices = null);
 
 /// <summary>One leg of the route: craft <see cref="Crafts"/> of a recipe to go from <see cref="FromSkill"/> to <see cref="ToSkill"/>.</summary>
 /// <param name="Cost">Rough value of the materials, in copper (vendor prices and vendor values; no auction prices).</param>
@@ -48,9 +49,9 @@ public sealed record ProfessionPlan(
 /// <summary>
 /// Profession leveling: from your skill upward, at every point the recipe with the lowest expected material cost per
 /// skill point. Skill-up chance (Classic): 100% while the recipe is orange, then (grey − skill) / (grey − yellow) through
-/// yellow and green, 0 at grey; expected crafts for a point = 1 / chance. Materials are weighed by how hard they are to
-/// get (no auction prices): vendor reagents at their price, the rest at their vendor value (×1.5 for green and better);
-/// materials you have count less. Sub-parts of the same profession (and smelting, if chosen) are made from their own reagents.
+/// yellow and green, 0 at grey; expected crafts for a point = 1 / chance. Materials cost: vendor reagents their price,
+/// others their auction price (Auctionator) when known, else their vendor value as a stand-in for how hard they are
+/// to get (×1.5 for green and better); materials you have count less. Sub-parts of the same profession (and smelting, if chosen) are made from their own reagents.
 /// </summary>
 public sealed class ProfessionPlanner(string databasePath)
 {
@@ -145,8 +146,10 @@ public sealed class ProfessionPlanner(string databasePath)
             // Copper. Vendor reagents cost what the vendor asks; for the rest the item's vendor value stands in for
             // what it's worth (no auction prices): it follows the game's own idea of how rare it is.
             var info = items.GetValueOrDefault(item);
+            var auction = options.AuctionPrices?.GetValueOrDefault(item) ?? 0;
             double cost;
-            if (info is { Vendor: true }) cost = Math.Max(1, info.BuyPrice);
+            if (info is { Vendor: true }) cost = Math.Max(1, auction > 0 ? Math.Min(auction, info.BuyPrice) : info.BuyPrice);
+            else if (auction > 0 && !(depth < 4 && makers.ContainsKey(item))) cost = auction; // what it sells for
             else if (depth < 4 && makers.TryGetValue(item, out var maker) && maker.Reagents.Count > 0)
                 cost = maker.Reagents.Sum(x => x.Qty * Cost(x.Item, depth + 1)) / maker.Makes; // per item made
             else if (info is null) cost = 500;

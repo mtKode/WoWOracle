@@ -30,7 +30,7 @@ public sealed record ReagentRow(int SpellId, int ItemId, string Name, int Quanti
 
 public enum RecipeSort { Skill, Name, Grey, ItemLevel }
 
-public sealed record ReagentPart(int Quantity, string Name, int Quality);
+public sealed record ReagentPart(int Quantity, string Name, int Quality, int ItemId = 0);
 
 /// <summary>Recipe queries over the game database.</summary>
 public sealed class RecipeService(string databasePath)
@@ -56,7 +56,7 @@ public sealed class RecipeService(string databasePath)
                COALESCE((SELECT group_concat(e.trigger_type || '~' || COALESCE(NULLIF(s.description, ''), s.name), '|')
                          FROM item_effects e JOIN spells s ON s.id = e.spell_id
                          WHERE e.item_id = r.created_item_id AND e.trigger_type IN (0, 1, 2, 5)), ''),
-               COALESCE((SELECT group_concat(rr.quantity || '~' || COALESCE(ri.name, 'Item ' || rr.item_id) || '~' || COALESCE(ri.quality, 1), '|')
+               COALESCE((SELECT group_concat(rr.quantity || '~' || COALESCE(ri.name, 'Item ' || rr.item_id) || '~' || COALESCE(ri.quality, 1) || '~' || rr.item_id, '|')
                          FROM recipe_reagents rr LEFT JOIN items ri ON ri.id = rr.item_id
                          WHERE rr.spell_id = r.spell_id), '')
         FROM recipes r
@@ -161,8 +161,9 @@ public sealed class RecipeService(string databasePath)
                 Effects = reader.GetString(22),
                 Reagents = reader.GetString(23).Split('|', StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => x.Split('~'))
-                    .Where(p => p.Length == 3)
-                    .Select(p => new ReagentPart(int.TryParse(p[0], out var q) ? q : 1, p[1], int.TryParse(p[2], out var k) ? k : 1))
+                    .Where(p => p.Length >= 3)
+                    .Select(p => new ReagentPart(int.TryParse(p[0], out var q) ? q : 1, p[1], int.TryParse(p[2], out var k) ? k : 1,
+                        p.Length > 3 && int.TryParse(p[3], out var id) ? id : 0))
                     .ToList(),
             });
         }

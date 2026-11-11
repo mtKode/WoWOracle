@@ -35,6 +35,8 @@ public sealed record UpgradeRow(
 {
     /// <summary>The source has map coordinates ("View on map").</summary>
     public bool HasMap => MapPlace.Find(SourceText) is not null;
+    /// <summary>"AH 1s 85c" when Auctionator has a price for the item.</summary>
+    public string PriceText => AuctionPrices.Label(ItemId);
 }
 
 /// <summary>A note in the Notes list.</summary>

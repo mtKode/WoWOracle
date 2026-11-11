@@ -106,6 +106,13 @@ public sealed record RecipeRow(int SpellId, string Name, string Meta, string Rea
         return (string.Join(" · ", head), string.Join(", ", stats), string.Join("  ", effects));
     }
 
+    /// <summary>"3x Linen Cloth · 66c": the auction price for the quantity when Auctionator has one.</summary>
+    public static string PricedReagent(int itemId, int quantity, string name)
+    {
+        var price = AuctionPrices.Text(itemId, quantity);
+        return price.Length > 0 ? $"{quantity}x {name} · {price}" : $"{quantity}x {name}";
+    }
+
     public static RecipeRow From(RecipeSummary r)
     {
         var learn = r.SkillEstimated ? $"~{r.MinSkill}" : r.MinSkill.ToString();
@@ -125,7 +132,7 @@ public sealed record RecipeRow(int SpellId, string Name, string Meta, string Rea
             Green = bands.Green,
             Grey = bands.Grey,
             SkillTip = ItemText.SkillUps(r.MinSkill, r.YellowAt, r.GreyAt, r.SkillEstimated),
-            ReagentChips = r.Reagents.Select(x => new ColoredLine($"{x.Quantity}x {x.Name}", ItemQuality.BrushFor(x.Quality))).ToList(),
+            ReagentChips = r.Reagents.Select(x => new ColoredLine(PricedReagent(x.ItemId, x.Quantity, x.Name), ItemQuality.BrushFor(x.Quality))).ToList(),
             ItemLine = item.Item,
             StatLine = item.Stats,
             EffectLine = item.Effects,
@@ -144,8 +151,10 @@ public sealed record CraftRow(int SpellId, string Name, string Meta, int Quantit
 }
 
 /// <summary>Total of one reagent across everything queued.</summary>
-public sealed record ShoppingRow(string Name, int Quantity, Brush NameBrush)
+public sealed record ShoppingRow(string Name, int Quantity, Brush NameBrush, int ItemId = 0)
 {
     public string Amount => $"{Quantity}x";
-    public string Text => $"{Quantity}x {Name}";
+    public string Text => $"{Quantity}x {Name}"; // copied as is (Auctionator's shopping list import takes names)
+    /// <summary>Auction price for the whole quantity (Auctionator), "" when unknown.</summary>
+    public string PriceText { get; } = AuctionPrices.Label(ItemId, Quantity);
 }

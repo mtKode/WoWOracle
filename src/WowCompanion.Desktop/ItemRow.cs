@@ -33,6 +33,8 @@ public sealed record ItemRow(int Id, string Name, string Summary, Brush NameBrus
         };
     }
     public bool HasEffectText => EffectText.Length > 0;
+    /// <summary>"AH 1s 85c" when Auctionator has a price for the item.</summary>
+    public string PriceText => Id > 0 ? AuctionPrices.Label(Id) : "";
 
     public static ItemRow From(ItemResult result)
     {

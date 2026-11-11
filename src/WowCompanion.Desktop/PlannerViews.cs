@@ -20,9 +20,14 @@ public sealed partial class PlanMaterialRow(int itemId, string name, Brush nameB
     public int Total { get; } = total;
     public string Source { get; } = source;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ToGet), nameof(Done))] private int _have = have;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ToGet), nameof(Done), nameof(PriceText))] private int _have = have;
 
     public int ToGet => Math.Max(0, Total - Have);
+
+    /// <summary>Auction price per item (Auctionator), 0 when unknown.</summary>
+    public long UnitPrice { get; } = AuctionPrices.Unit(itemId);
+    /// <summary>"AH 6s 60c (22c each)" for what's still to get, or the price of one when you have them all.</summary>
+    public string PriceText => AuctionPrices.Label(ItemId, Math.Max(1, ToGet));
     public bool Done => ToGet == 0;
 
     /// <summary>Typed into the "have" box.</summary>

@@ -74,6 +74,8 @@ public sealed record ItemView(
     public string ArmorLine { get; init; } = "";
     public IReadOnlyList<string> EffectLines { get; init; } = [];
     public string ClassLine { get; init; } = "";
+    /// <summary>"Auction house: 1s 85c" on the hover card when Auctionator has a price.</summary>
+    public string AuctionLine { get; init; } = "";
     public string SetTitle { get; init; } = "";
     public IReadOnlyList<ColoredLine> SetLines { get; init; } = [];
 
@@ -135,6 +137,8 @@ public sealed record ItemView(
         if (sells.Length > 0) facts.Add(new Fact("Sells for", sells));
         var costs = ItemText.Money(d.BuyPrice);
         if (costs.Length > 0) facts.Add(new Fact("Vendor price", costs));
+        var auction = AuctionPrices.Detail(d.Id);
+        if (auction.Length > 0) facts.Add(new Fact("Auction house", auction));
 
         // Weapon numbers.
         string damage = "", speed = "", dps = "";
@@ -204,6 +208,7 @@ public sealed record ItemView(
             ArmorLine = d.Armor > 0 ? $"{d.Armor} Armor" : "",
             EffectLines = effects,
             ClassLine = d.Classes.Count > 0 ? "Classes: " + string.Join(", ", d.Classes) : "",
+            AuctionLine = AuctionPrices.Text(d.Id) is { Length: > 0 } price ? $"Auction house: {price}" : "",
             SetTitle = setTitle,
             IconId = d.IconId,
             SetLines = setLines,
@@ -226,7 +231,7 @@ public sealed record ItemView(
                     TitleBrush = SourceColors.Profession,
                     Bands = SkillBands.Lines(r.MinSkill, r.YellowAt, r.GreyAt, r.SkillEstimated),
                     BandTip = ItemText.SkillUps(r.MinSkill, r.YellowAt, r.GreyAt, r.SkillEstimated),
-                    Chips = r.Reagents.Select(x => new ColoredLine($"{x.Quantity}x {x.Name}", ItemQuality.BrushFor(x.Quality))).ToList(),
+                    Chips = r.Reagents.Select(x => new ColoredLine(RecipeRow.PricedReagent(x.ItemId, x.Quantity, x.Name), ItemQuality.BrushFor(x.Quality))).ToList(),
                 };
             }).ToList();
             sections.Add(new SourceSection("Crafted by", lines));

@@ -226,6 +226,11 @@ file in a folder named `font` next to the exe.
   items), via [wago.tools](https://wago.tools).
 - Drops and drop chances, vendors, quests, NPCs: the [CMaNGOS](https://github.com/cmangos/classic-db) Classic
   database, topped up with what the addon sees in game.
+- Auction prices (optional): the [Auctionator](https://www.curseforge.com/wow/addons/auctionator) addon's last
+  scans, read from its saved file when it's installed. Prices show next to items (search, item pages, loot,
+  upgrades, reagents, shopping lists) and the profession planner uses them to pick the cheapest route. Scan the
+  auction house with Auctionator now and then; the age of the prices is shown. With several realms, pick one under
+  Level a profession → Materials.
 - Zone lore: written for this app.
 
 Everything is downloaded once and kept on your PC; only new game builds are fetched again.

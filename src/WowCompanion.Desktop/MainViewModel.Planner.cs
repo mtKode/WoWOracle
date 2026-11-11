@@ -207,7 +207,7 @@ public partial class MainViewModel
             var to = int.TryParse(PlanToText, out var t) ? Math.Clamp(t, from + 1, 300) : 300;
             var known = Character?.Recipes.GetValueOrDefault(PlanProfession);
             var options = new PlanOptions(PlanProfession, from, to, PlanVendorRecipes, PlanDropRecipes,
-                PlanSubParts && PlanHasSubParts, PlanSmelt && PlanUsesBars, known, Owned());
+                PlanSubParts && PlanHasSubParts, PlanSmelt && PlanUsesBars, known, Owned(), AuctionPrices.All());
             PlanBusy = true;
             var plan = await Task.Run(() => planner.Plan(options), ct);
             if (ct.IsCancellationRequested) return;
@@ -240,6 +240,7 @@ public partial class MainViewModel
         foreach (var m in plan.Materials)
             PlanMaterials.Add(new PlanMaterialRow(m.ItemId, m.Name, ItemQuality.BrushFor(m.Quality), m.IconId, m.Total, m.Owned, m.Source,
                 OnHaveTyped));
+        UpdatePlanMaterialsCost();
         PlanSubCrafts.Clear();
         foreach (var s in plan.SubCrafts)
             PlanSubCrafts.Add(new PlanSubCraftRow(s.Name, ItemQuality.BrushFor(s.Quality), s.IconId, $"make {s.Count} · {s.How}"));
@@ -251,12 +252,25 @@ public partial class MainViewModel
         var crafts = plan.Steps.Sum(s => s.Crafts);
         PlanSummary = plan.Steps.Count == 0
             ? "Nothing to plan for this range."
-            : $"{PlanProfession} {from} → {plan.ReachedSkill}: {plan.Steps.Count} recipes, about {crafts} crafts · materials worth ≈ {Money(plan.TotalCost)} (vendor values, no auction prices)"
+            : $"{PlanProfession} {from} → {plan.ReachedSkill}: {plan.Steps.Count} recipes, about {crafts} crafts · materials worth ≈ {Money(plan.TotalCost)} ({(AuctionPrices.Any ? "auction prices where Auctionator has them, else vendor values" : "vendor values; install Auctionator for auction prices")})"
               + (plan.ReachedSkill < to ? $" · stops at {plan.ReachedSkill}" : "");
+    }
+
+    /// <summary>What the materials still to get cost at the auction house (Auctionator), for the Materials heading.</summary>
+    [ObservableProperty] private string _planMaterialsCost = "";
+
+    private void UpdatePlanMaterialsCost()
+    {
+        var priced = PlanMaterials.Where(m => m.ToGet > 0 && m.UnitPrice > 0).ToList();
+        var missing = PlanMaterials.Count(m => m.ToGet > 0 && m.UnitPrice == 0 && m.Source != "Vendor");
+        PlanMaterialsCost = priced.Count == 0 ? "" :
+            $"Still to get ≈ {ItemText.Money(priced.Sum(m => m.UnitPrice * m.ToGet))} at the auction house"
+            + (missing > 0 ? $" ({missing} without a price)" : "");
     }
 
     private void OnHaveTyped(PlanMaterialRow row)
     {
+        UpdatePlanMaterialsCost();
         _manualHave[row.ItemId] = row.Have;
         _talentBuilds.SetSetting(HaveKey, string.Join(",", _manualHave.Select(h => $"{h.Key}:{h.Value}")));
     }

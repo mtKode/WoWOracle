@@ -344,6 +344,19 @@
         </Style>
 
         <!-- Body text line that disappears when it is empty. -->
+        <!-- An auction price (Auctionator) next to an item; gone when there is none. -->
+        <Style x:Key="PriceTag" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Gold}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="10,0,0,0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="Line" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{DynamicResource Serif}" />
             <Setter Property="Foreground" Value="{StaticResource Parchment}" />
@@ -569,6 +582,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <TextBlock Text="{Binding AuctionLine}" Style="{StaticResource Line}" FontSize="12" Foreground="{StaticResource Gold}" Margin="0,6,0,0" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -961,6 +975,7 @@
                                         <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="34" Height="34" Margin="0,0,10,0">
                                             <local:GameIcon FileId="{Binding IconId}" IconName="{Binding IconName}" Size="medium" />
                                         </Border>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding PriceText}" Style="{StaticResource PriceTag}" />
                                         <StackPanel VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}"
                                                        FontFamily="{DynamicResource Serif}" FontSize="15"
@@ -1555,10 +1570,13 @@
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                                 <TextBlock Text="{Binding Amount}" Foreground="{StaticResource Parchment}" MinWidth="36" />
                                                 <TextBox Style="{StaticResource CopyText}" Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush}" />
+                                                <TextBlock Text="{Binding PriceText}" Style="{StaticResource PriceTag}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <TextBlock Text="{Binding ShoppingCost}" Style="{StaticResource PriceTag}" Margin="0,8,0,0" FontSize="13" HorizontalAlignment="Left" />
+                                <TextBlock Text="{Binding AuctionStatus}" Style="{StaticResource PriceTag}" Margin="0,2,0,0" Foreground="{StaticResource Dim}" HorizontalAlignment="Left" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1683,6 +1701,14 @@
                                         <StackPanel>
                                             <TextBlock Text="Materials" FontFamily="{DynamicResource Serif}" FontSize="16" Foreground="{StaticResource Gold}" />
                                             <TextBlock Text="Need · have (from bags and bank, or type it) · still to get" FontSize="12" Foreground="{StaticResource Dim}" />
+                                            <TextBlock Text="{Binding PlanMaterialsCost}" Style="{StaticResource PriceTag}" Margin="0,2,0,0" FontSize="13" HorizontalAlignment="Left" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                                        Visibility="{Binding HasAuctionPrices, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="{Binding AuctionStatus}" FontSize="12" Foreground="{StaticResource Dim}" VerticalAlignment="Center" />
+                                                <ComboBox ItemsSource="{Binding AuctionRealms}" SelectedItem="{Binding AuctionRealm}" Margin="8,0,0,0" MinWidth="110"
+                                                          ToolTip="Auctionator keeps prices per realm: which one to use"
+                                                          Visibility="{Binding HasAuctionRealmChoice, Converter={StaticResource BoolToVis}}" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </DockPanel>
                                     <ItemsControl ItemsSource="{Binding PlanMaterials}" Margin="0,6,0,0">
@@ -1701,7 +1727,10 @@
                                                                Foreground="{StaticResource Parchment}" VerticalAlignment="Center" ToolTip="Needed" />
                                                     <StackPanel VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding Source}" Foreground="{StaticResource Dim}" FontSize="12" />
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Source}" Foreground="{StaticResource Dim}" FontSize="12" />
+                                                            <TextBlock Text="{Binding PriceText}" Style="{StaticResource PriceTag}" />
+                                                        </StackPanel>
                                                     </StackPanel>
                                                 </DockPanel>
                                             </DataTemplate>
@@ -2330,6 +2359,7 @@
                                                         <TextBlock Text="{Binding StatLine}" Foreground="{StaticResource Green}" FontSize="12" TextWrapping="Wrap" />
                                                         <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                                         <TextBlock Text="{Binding LevelText}" Foreground="{StaticResource Dim}" FontSize="12" />
+                                                        <TextBlock Text="{Binding PriceText}" Style="{StaticResource PriceTag}" Margin="0" HorizontalAlignment="Left" />
                                                     </StackPanel>
                                                 </DockPanel>
                                             </Border>
@@ -2448,6 +2478,7 @@
                                                                     <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="30" Height="30" Margin="0,0,10,0" VerticalAlignment="Top">
                                                                         <local:GameIcon FileId="{Binding IconId}" Size="medium" />
                                                                     </Border>
+                                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding PriceText}" Style="{StaticResource PriceTag}" VerticalAlignment="Top" />
                                                                     <StackPanel VerticalAlignment="Center">
                                                                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
                                                                         <TextBlock Text="{Binding Summary}" Foreground="{StaticResource Dim}" FontSize="12" TextTrimming="CharacterEllipsis" />
