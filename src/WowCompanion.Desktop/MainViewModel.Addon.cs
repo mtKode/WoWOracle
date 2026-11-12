@@ -238,40 +238,31 @@ public partial class MainViewModel
         return result.Texts;
     }
 
-    /// <summary>Chronicle lines and one toast for what a pass brought in (UI thread).</summary>
+    /// <summary>
+    /// One Chronicle line (plus the quest names, if any) and one toast for what a pass brought in (UI thread).
+    /// Kept short: the details live where they're used (map search, planner, Calculator, Journal).
+    /// </summary>
     private void ReportAddonPass(AddonPassResult r, string version)
     {
         static string Names(List<string> titles) =>
-            string.Join(", ", titles.Take(8)) + (titles.Count > 8 ? $" and {titles.Count - 8} more" : "");
-
-        if (r.NewQuests > 0)
-            Log($"Addon: {Plural(r.NewQuests, "new quest")} read from the game (kept in the app's own data).", "addon");
-        if (r.Quests.Added.Count > 0)
-            Log($"Quests added (not in the quest data): {Names(r.Quests.Added)}.", "addon");
-        if (r.Quests.Updated.Count > 0)
-            Log($"Quests updated from a newer capture: {Names(r.Quests.Updated)}.", "addon");
-        if (r.Items > 0)
-            Log($"{Plural(r.Items, "item")} from the game client added to the item data.", "addon");
-        if (r.TalentClasses.Count > 0)
-            Log($"Talent trees from the game client (build {r.ClientBuild}, newer than {TalentOverlay.BuildNumber(version)}): {string.Join(", ", r.TalentClasses.Order())}.", "addon");
-        var sightings = ReportSightings(r.NewSightings, r.Sightings);
-        if (r.NewBaseStats > 0)
-        {
-            Log($"Base stats from the game: {Plural(r.NewBaseStats, "new class/race/level")} recorded (the Calculator uses them instead of its estimate).", "addon");
-            if (_characterLoaded) Recalculate();
-        }
-        if (r.PlacedSubzones > 0)
-            Log($"From your travels: {Plural(r.PlacedSubzones, "subzone")} now on the map (map search).", "addon");
-        if (r.TrainerRecipes > 0)
-            Log($"Trainer skills from the game: {Plural(r.TrainerRecipes, "recipe")} now show the skill the trainer teaches them at (the profession planner uses it).", "addon");
-        ReportKnownIds(r.Known);
+            string.Join(", ", titles.Take(6)) + (titles.Count > 6 ? $" +{titles.Count - 6} more" : "");
 
         var parts = new List<string>();
-        if (r.Quests.Added.Count > 0) parts.Add(Plural(r.Quests.Added.Count, "quest"));
+        if (r.Quests.Added.Count > 0) parts.Add(Plural(r.Quests.Added.Count, "new quest"));
+        if (r.Quests.Updated.Count > 0) parts.Add($"{Plural(r.Quests.Updated.Count, "quest")} updated");
         if (r.Items > 0) parts.Add(Plural(r.Items, "item"));
-        if (r.TalentClasses.Count > 0) parts.Add($"{string.Join(", ", r.TalentClasses.Order())} talents");
-        if (sightings is not null) parts.Add(sightings);
-        if (parts.Count > 0) ToastOnly($"From the game client: {string.Join(" and ", parts)}.");
+        parts.AddRange(SightingParts(r.Sightings));
+        if (r.PlacedSubzones > 0) parts.Add($"{Plural(r.PlacedSubzones, "subzone")} on the map");
+        if (r.TrainerRecipes > 0) parts.Add(Plural(r.TrainerRecipes, "trainer skill"));
+        if (r.NewBaseStats > 0) parts.Add(Plural(r.NewBaseStats, "base-stat level"));
+        if (r.TalentClasses.Count > 0) parts.Add($"{string.Join(", ", r.TalentClasses.Order())} talents (build {r.ClientBuild})");
+
+        if (parts.Count > 0) Log($"From the game: {string.Join(" · ", parts)}.", "addon");
+        if (r.Quests.Added.Count > 0) Log($"New quests: {Names(r.Quests.Added)}.", "note");
+        if (r.NewBaseStats > 0 && _characterLoaded) Recalculate();
+        ReportKnownIds(r.Known);
+
+        if (parts.Count > 0) ToastOnly($"From the game: {string.Join(", ", parts.Take(4))}{(parts.Count > 4 ? "…" : "")}.");
     }
 
     private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";

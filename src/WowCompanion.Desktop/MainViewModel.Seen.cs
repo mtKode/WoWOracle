@@ -78,23 +78,15 @@ public partial class MainViewModel
         if (known.Error.Length > 0)
             Log($"Couldn't update the addon's known-data list: {known.Error}", "warn");
         else if (known.Written.Count > 0)
-            Log($"Told the addon what the app already knows ({string.Join(", ", known.Written)}): from the next /reload it only records new NPCs, quests, vendors and loot.", "addon");
+            Log($"Addon's known-data list updated ({string.Join(", ", known.Written)}); it skips those after /reload.", "note");
     }
 
-    /// <summary>Chronicle lines for new sightings; returns a short summary for the toast (or null).</summary>
-    private string? ReportSightings(int fresh, SeenInjectResult result)
+    /// <summary>Short pieces for what new sightings added to the game data (NPCs, map spots, vendors, drops).</summary>
+    private static IEnumerable<string> SightingParts(SeenInjectResult result)
     {
-        if (fresh > 0)
-            Log($"Addon: {Plural(fresh, "new sighting")} from the game (NPCs, vendors, loot), kept in the app's own data.", "addon");
-        if (!result.Any) return null;
-
-        var parts = new List<string>();
-        if (result.Npcs > 0) parts.Add(Plural(result.Npcs, "new NPC"));
-        if (result.Placed > 0) parts.Add($"{Plural(result.Placed, "NPC")} placed on the map");
-        if (result.VendorItems > 0) parts.Add($"{Plural(result.VendorItems, "vendor item")} ({Plural(result.Vendors, "vendor")})");
-        if (result.LootItems > 0) parts.Add($"{Plural(result.LootItems, "drop")} ({Plural(result.LootSources, "source")})");
-        var text = string.Join(", ", parts);
-        Log($"From your travels in Azeroth: {text}.", "addon");
-        return text;
+        if (result.Npcs > 0) yield return Plural(result.Npcs, "new NPC");
+        if (result.Placed > 0) yield return $"{Plural(result.Placed, "NPC")} placed";
+        if (result.VendorItems > 0) yield return Plural(result.VendorItems, "vendor item");
+        if (result.LootItems > 0) yield return Plural(result.LootItems, "drop");
     }
 }

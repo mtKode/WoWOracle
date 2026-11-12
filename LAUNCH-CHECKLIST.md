@@ -37,14 +37,14 @@ before launch).
 - [ ] If the client build is newer than wago's data, talent trees from the client apply (Chronicle line). Otherwise wago's are used.
 
 ## 5b. New world data (addon 0.8.0, only what the data lacks)
-- [ ] Chronicle: "Told the addon what the app already knows (_forever_ …)". `Interface\AddOns\WoWOracle\Known.lua` is no longer the `WoWOracleKnown = nil` placeholder.
+- [ ] Chronicle: "Addon's known-data list updated (_forever_ …)". `Interface\AddOns\WoWOracle\Known.lua` is no longer the `WoWOracleKnown = nil` placeholder.
 - [ ] In game `/reload`, then `/oracle seen`: second line shows the known list (npcs, placed, objects, quests, vendors, sourced ranges).
 - [ ] Target a few NPCs in a Forever-only zone (Mount Hyjal, Zephras Isle…) and a vendor there; kill and loot some mobs. `/oracle seen` counts go up; in an old zone they stay at 0.
-- [ ] `/oracle sync` → Chronicle: "From your travels in Azeroth: … new NPCs, … vendor items, … drops". The new NPC shows on the map, its drops in the item's sources.
+- [ ] `/oracle sync` → Chronicle: "From the game: … new NPCs · … vendor items · … drops". The new NPC shows on the map, its drops in the item's sources.
 - [ ] If loot never counts: `/dump GetLootSourceInfo` must be a function (otherwise only your dead target counts).
 
 ## 5c. Base stats (addon 0.9.0)
-- [ ] `/oracle base` prints your base stats; after `/oracle sync` the Chronicle says "Base stats from the game: … recorded".
+- [ ] `/oracle base` prints your base stats; after `/oracle sync` the Chronicle says "From the game: … base-stat level".
 - [ ] Calculator with that class, race and level and blank naked stats: the note says "Naked stats recorded in game at level N".
 - [ ] Take all gear off once: `/oracle base` mentions health and mana; **Copy recorded** gives CSV with naked health/mana.
 - [ ] Make the class/race combinations you're curious about (Tauren Warrior…) and log each in once.
@@ -52,7 +52,7 @@ before launch).
 ## 5d. Trainer skills (addon 0.10.0)
 - [ ] Open a profession trainer, then `/oracle trainer`: "read N recipes from this trainer". The trainer window's
       filter (available / unavailable / used) is the same as before you opened it.
-- [ ] `/oracle sync` → Chronicle: "Trainer skills from the game: N recipes now show the skill the trainer teaches them at".
+- [ ] `/oracle sync` → Chronicle: "From the game: … N trainer skills".
 - [ ] That trainer's recipes show their skill without **~** on the item page; Level a profession uses them.
 - [ ] Compare a few against the trainer's "Requires <profession> (N)" line.
 
@@ -61,7 +61,7 @@ before launch).
       the bosses you killed show their drops.
 - [ ] Map: search "freewind", "shimmering", a Riverglades subzone and an NPC; each opens the zone with a marker on the spot.
 - [ ] Addon 0.11.0: spend a minute in a subzone the search shows as "(whole zone)" (Faol's Rest), `/oracle sync`: the
-      Chronicle says "From your travels: 1 subzone now on the map" and the search puts a marker there.
+      Chronicle says "From the game: 1 subzone on the map" and the search puts a marker there.
 
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.

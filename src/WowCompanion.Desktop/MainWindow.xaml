@@ -3624,7 +3624,7 @@
                         <ItemsControl ItemsSource="{Binding LogEntries}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,2,0,3">
+                                    <Grid Margin="0,1,0,1">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
