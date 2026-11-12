@@ -2754,24 +2754,30 @@
                             <TextBlock Text="Map" FontSize="16" Foreground="{StaticResource Gold}" />
                             <TextBox Style="{StaticResource FilterTextBox}" Margin="0,8,0,0"
                                      Text="{Binding MapSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Find a zone, subzone, town, flight master or NPC (Enter opens the first)">
+                                     local:ListKeys.Target="{Binding ElementName=MapHitList}"
+                                     ToolTip="Find a zone, subzone, town, flight master or NPC. ↑ ↓ or Tab move, Enter opens.">
                                 <TextBox.InputBindings>
-                                    <KeyBinding Key="Enter" Command="{Binding PickFirstMapHitCommand}" />
+                                    <KeyBinding Key="Enter" Command="{Binding PickMapHitCommand}" />
                                     <KeyBinding Key="Escape" Command="{Binding ClearMapSearchCommand}" />
                                 </TextBox.InputBindings>
                             </TextBox>
-                            <TextBlock Text="Find a zone, place or NPC" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,2,0,0" />
+                            <TextBlock Text="Find a zone, place or NPC · ↑ ↓ Tab, Enter" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,2,0,0" />
                             <CheckBox IsChecked="{Binding ShowTalePins}" Margin="0,8,0,0" Foreground="{StaticResource Parchment}" FontSize="12"
                                       Content="Mark where the tales begin" ToolTip="The Journal's tales of the zone, marked with a gold !" />
                         </StackPanel>
                         <!-- Search answers: shown instead of the zone list while there's text in the box -->
-                        <ListBox DockPanel.Dock="Top" ItemsSource="{Binding MapHits}" SelectedItem="{Binding SelectedMapHit}"
+                        <ListBox x:Name="MapHitList" DockPanel.Dock="Top" ItemsSource="{Binding MapHits}" SelectedItem="{Binding SelectedMapHit}"
                                  ItemContainerStyle="{StaticResource RecipeItem}" Background="Transparent" BorderThickness="0" Padding="0"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  Visibility="{Binding IsMapSearching, Converter={StaticResource BoolToVis}}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="0,1,12,1">
+                                    <StackPanel Margin="0,1,12,1" Background="Transparent">
+                                        <StackPanel.InputBindings>
+                                            <MouseBinding Gesture="LeftClick"
+                                                          Command="{Binding DataContext.GoToMapHitCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding}" />
+                                        </StackPanel.InputBindings>
                                         <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Parchment}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>

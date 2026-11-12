@@ -187,24 +187,23 @@ public partial class MainViewModel
             if (cts.IsCancellationRequested) return;
             MapHits.Clear();
             foreach (var hit in hits) MapHits.Add(hit);
+            SelectedMapHit = MapHits.FirstOrDefault(); // what Enter opens; arrows / Tab move it
         }
         catch (OperationCanceledException) { }
     }
 
-    partial void OnSelectedMapHitChanged(MapSearchHit? value)
-    {
-        if (value is not null) GoToMapHit(value);
-    }
-
-    /// <summary>Enter in the search box: the first answer.</summary>
+    /// <summary>Enter in the search box: the highlighted answer (the first one unless the arrows moved it).</summary>
     [RelayCommand]
-    private void PickFirstMapHit()
+    private void PickMapHit()
     {
-        if (MapHits.FirstOrDefault() is { } hit) GoToMapHit(hit);
+        if ((SelectedMapHit ?? MapHits.FirstOrDefault()) is { } hit) GoToMapHit(hit);
     }
 
-    private void GoToMapHit(MapSearchHit hit)
+    /// <summary>A click on an answer. Moving the highlight with the keys doesn't open anything until Enter.</summary>
+    [RelayCommand]
+    private void GoToMapHit(MapSearchHit? hit)
     {
+        if (hit is null) return;
         if (hit.HasSpot) ViewOnMap(new MapSpot(hit.Zone, hit.X, hit.Y, hit.Kind == "zone" ? "" : hit.Name));
         else OpenZoneMap(hit.Zone);
     }
