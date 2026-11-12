@@ -2885,8 +2885,24 @@
                                 </ItemsControl>
                             </Grid>
                         </ScrollViewer>
-                        <TextBlock Text="{Binding MapStatus}" FontSize="14" FontStyle="Italic" Foreground="{StaticResource Dim}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="30" IsHitTestVisible="False" />
+                        <!-- "Unrolling the map…" and other notes: a dark banner with a gold edge, readable over any map picture -->
+                        <Border HorizontalAlignment="Center" VerticalAlignment="Center" Margin="30" MaxWidth="460" IsHitTestVisible="False"
+                                Background="#E8140D07" BorderBrush="{StaticResource Gold}" BorderThickness="1" CornerRadius="4" Padding="22,12">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding MapStatus}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.85" Color="Black" />
+                            </Border.Effect>
+                            <TextBlock Text="{Binding MapStatus}" FontFamily="{DynamicResource Serif}" FontSize="17" Foreground="{StaticResource Gold}"
+                                       TextAlignment="Center" TextWrapping="Wrap" />
+                        </Border>
                         <DockPanel Grid.Row="1" Margin="10,5" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left" Text="{Binding SelectedMapZone.Name}" FontSize="14" Foreground="{StaticResource Gold}" />
                             <TextBlock DockPanel.Dock="Left" Text="{Binding MapCursorText}" FontSize="12" Foreground="{StaticResource Parchment}"
