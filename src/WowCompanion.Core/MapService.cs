@@ -142,4 +142,94 @@ public sealed class MapService(string databasePath)
     public ZoneMap? Find(string zone) =>
         Zones().Where(m => string.Equals(m.Name, zone, StringComparison.OrdinalIgnoreCase))
             .OrderBy(m => m.Type == 3 ? 0 : 1).ThenBy(m => m.UiMapId).FirstOrDefault();
+
+    /// <summary>
+    /// The Map page's search: zones, subzones, towns and flight masters (map_places, game data schema 29) and NPCs
+    /// with a known spot, whose name contains the text. Names starting with it first, then zones before places
+    /// before NPCs. Only places on a zone map the app has.
+    /// </summary>
+    public IReadOnlyList<MapSearchHit> Search(string text, int limit = 30)
+    {
+        text = text.Trim();
+        if (text.Length < 2) return [];
+        var zones = Zones().Where(m => m.Type == 3).Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var hits = new List<MapSearchHit>();
+        foreach (var z in zones.Where(z => z.Contains(text, StringComparison.OrdinalIgnoreCase)))
+            hits.Add(new MapSearchHit(z, "zone", z, -1, -1, ""));
+
+        try
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = databasePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString());
+            connection.Open();
+            var like = "%" + text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            try
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT name, kind, zone, x, y FROM map_places WHERE name LIKE $q ESCAPE '\\' LIMIT 200";
+                command.Parameters.AddWithValue("$q", like);
+                using var r = command.ExecuteReader();
+                while (r.Read())
+                    if (zones.Contains(r.GetString(2)))
+                        hits.Add(new MapSearchHit(r.GetString(0), r.GetString(1), r.GetString(2), r.GetDouble(3), r.GetDouble(4), ""));
+            }
+            catch (SqliteException) { } // game data before schema 29: no places yet
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = """
+                    SELECT name, subname, min_level, max_level, zone, zone_x, zone_y FROM npcs
+                    WHERE name LIKE $q ESCAPE '\' AND zone <> '' AND zone_x > 0
+                    GROUP BY name, zone LIMIT 200
+                    """;
+                command.Parameters.AddWithValue("$q", like);
+                using var r = command.ExecuteReader();
+                while (r.Read())
+                {
+                    if (!zones.Contains(r.GetString(4))) continue;
+                    var (min, max) = (r.GetInt32(2), r.GetInt32(3));
+                    var detail = new List<string>();
+                    // The Classic data writes a missing title as the text "NULL".
+                    if (!r.IsDBNull(1) && r.GetString(1) is { Length: > 0 } title && title != "NULL") detail.Add(title);
+                    if (max > 0) detail.Add(min == max ? $"level {max}" : $"level {min}-{max}");
+                    hits.Add(new MapSearchHit(r.GetString(0), "npc", r.GetString(4), r.GetDouble(5), r.GetDouble(6), string.Join(", ", detail)));
+                }
+            }
+        }
+        catch (SqliteException) { }
+
+        static int Rank(string kind) => kind switch { "zone" => 0, "subzone" => 1, "place" or "flight" => 2, _ => 3 };
+        return hits
+            .OrderBy(h => h.Name.StartsWith(text, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(h => Rank(h.Kind)).ThenBy(h => h.Name).ThenBy(h => h.Zone)
+            .Take(limit).ToList();
+    }
+}
+
+/// <summary>One answer of the map search. X and Y are map coordinates (0-100), -1 when only the zone is known.</summary>
+/// <param name="Kind">zone, subzone, place (town, landmark), flight (flight master) or npc.</param>
+public sealed record MapSearchHit(string Name, string Kind, string Zone, double X, double Y, string Detail)
+{
+    public bool HasSpot => X >= 0 && Y >= 0;
+
+    /// <summary>"Subzone · Thousand Needles", "Flight master · Thousand Needles", "NPC · Innkeeper, level 30 · Ironforge".</summary>
+    public string Meta
+    {
+        get
+        {
+            var kind = Kind switch
+            {
+                "zone" => "Zone",
+                "subzone" => "Subzone",
+                "place" => "Place",
+                "flight" => "Flight master",
+                _ => Detail.Length > 0 ? $"NPC · {Detail}" : "NPC",
+            };
+            return Kind == "zone" ? kind : $"{kind} · {Zone}" + (HasSpot ? "" : " (whole zone)");
+        }
+    }
 }

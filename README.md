@@ -164,7 +164,8 @@ stats from the character screen for exact numbers.
 ### Loot (Ctrl+8)
 Dungeon and raid loot, AtlasLoot style. Search a dungeon, raid or boss, pick a boss and see its drops by type
 (gear, recipes, quest items) with real drop chances. **Quests** at the top of a dungeon lists the quests for it
-and their rewards.
+and their rewards. WoW Forever's own dungeons (The Drowned City, Blackmaw Hold…) are listed with their bosses from
+the game client; their loot fills in from your own kills with the addon on.
 
 ### Notes (Ctrl+9)
 Notes for later (a vendor to visit, a recipe to buy, a reset) with optional **reminders**: "18:30", "tomorrow
@@ -178,7 +179,8 @@ zone that would beat what your gear set wears.
 
 ### Map (Ctrl+M)
 The game's own zone maps, fully explored. Scroll to zoom, drag to move, coordinates under the mouse like in game.
-**View on map** buttons all over the app open the right zone with a marker.
+**View on map** buttons all over the app open the right zone with a marker. The search box above the zone list
+finds zones, subzones (Freewind Post, The Shimmering Flats), towns, flight masters and NPCs, and marks the spot.
 
 ### Oracle's Chronicle
 The scroll at the bottom left: everything that changed this session (new game data, what the addon brought in)

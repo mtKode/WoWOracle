@@ -86,7 +86,7 @@ public static class SourceImporter
     public static int Import(SqliteConnection connection, SqliteTransaction transaction, string dumpPath, Func<string, string>? csv = null)
     {
         var t = ReadDump(dumpPath);
-        var locator = csv is null ? null : ZoneLocator.TryLoad(csv);
+        var locator = csv is null ? null : ZoneLocator.TryLoad(csv, classicOnly: true); // Classic 1.12 spawns
         Table T(string name) => t.TryGetValue(name, out var table) ? table : new Table();
 
         // ----- creatures -----

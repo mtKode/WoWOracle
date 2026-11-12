@@ -13,8 +13,15 @@ public sealed class ZoneLocator
 
     private readonly Dictionary<int, List<Region>> _byMap = [];
 
+    /// <summary>WoW Forever's own zone maps have ids from here on (Mount Hyjal 2482, Riverglades 2548, Shen'dralas 2652…).</summary>
+    public const int FirstForeverUiMap = 2000;
+
     /// <summary>Null when the UiMap tables weren't downloaded.</summary>
-    public static ZoneLocator? TryLoad(Func<string, string> csv)
+    /// <param name="classicOnly">
+    /// Leave out WoW Forever's own zones, for Classic world data (CMaNGOS): their map rectangles overlap the old zones
+    /// next to them (Riverglades over the Burning Steppes and Badlands), so a Classic spawn would land in them.
+    /// </param>
+    public static ZoneLocator? TryLoad(Func<string, string> csv, bool classicOnly = false)
     {
         var mapPath = csv("UiMap");
         var assignmentPath = csv("UiMapAssignment");
@@ -29,6 +36,7 @@ public sealed class ZoneLocator
         foreach (var r in CsvTable.Read(assignmentPath))
         {
             if (!maps.TryGetValue(r.GetInt("UiMapID"), out var name) || name.Length == 0) continue;
+            if (classicOnly && r.GetInt("UiMapID") >= FirstForeverUiMap) continue;
             var region = new Region(
                 r.GetInt("MapID"),
                 r.GetDouble("Region_0"), r.GetDouble("Region_1"), r.GetDouble("Region_3"), r.GetDouble("Region_4"),

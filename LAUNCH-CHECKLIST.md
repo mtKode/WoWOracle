@@ -56,6 +56,11 @@ before launch).
 - [ ] That trainer's recipes show their skill without **~** on the item page; Level a profession uses them.
 - [ ] Compare a few against the trainer's "Requires <profession> (N)" line.
 
+## 5e. Forever dungeons and map search (app 1.1.7)
+- [ ] Loot: The Drowned City lists Zul'Alai, Var'Taka, Captain Dreadrise… After a run with the addon on and `/oracle sync`,
+      the bosses you killed show their drops.
+- [ ] Map: search "freewind", "shimmering", a Riverglades subzone and an NPC; each opens the zone with a marker on the spot.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

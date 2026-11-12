@@ -107,7 +107,8 @@ public partial class MainViewModel
     {
         var kind = i.IsRaid ? "Raid" : "Dungeon";
         var levels = i.MinLevel == i.MaxLevel ? $"{i.MaxLevel}" : $"{i.MinLevel}-{i.MaxLevel}";
-        return new LootPlaceRow(false, i.MapId, 0, i.Name, $"{kind} · level {levels}", i.IsRaid ? SourceColors.Boss : SourceColors.Place);
+        var meta = i.MaxLevel > 0 ? $"{kind} · level {levels}" : $"{kind} · new in WoW Forever";
+        return new LootPlaceRow(false, i.MapId, 0, i.Name, meta, i.IsRaid ? SourceColors.Boss : SourceColors.Place);
     }
 
     /// <summary>Arrow keys / Tab in the loot search box walk the place list below it.</summary>
@@ -161,7 +162,8 @@ public partial class MainViewModel
                 continue;
             }
             var levels = b.MinLevel == b.MaxLevel ? $"{b.MaxLevel}" : $"{b.MinLevel}-{b.MaxLevel}";
-            LootBosses.Add(new LootBossRow(b.NpcId, b.Name, $"Level {levels}", b.Rank == 3 ? SourceColors.Boss : SourceColors.Elite));
+            var meta = b.MaxLevel > 0 ? $"Level {levels}" : b.NpcId > 0 ? "Boss" : "Boss · not seen yet";
+            LootBosses.Add(new LootBossRow(b.NpcId, b.Name, meta, b.Rank == 3 ? SourceColors.Boss : SourceColors.Elite));
         }
         var instance = _instances.FirstOrDefault(i => i.MapId == mapId);
         LootTitle = instance?.Name ?? bosses.FirstOrDefault()?.MapName ?? "";
@@ -246,7 +248,10 @@ public partial class MainViewModel
 
         var hidden = items.Count - shown.Count;
         LootSubtitle = $"{boss.Name} · {shown.Count} items" + (hidden > 0 ? $" ({hidden} grey/white or world drops hidden)" : "");
-        if (items.Count == 0) LootSubtitle = $"{boss.Name} has no loot in the data.";
+        if (items.Count == 0)
+            LootSubtitle = boss.NpcId > 0
+                ? $"{boss.Name} has no loot in the data yet. Kill them with the WoW Oracle addon on and the drops are recorded."
+                : $"No loot known for {boss.Name} yet (new in WoW Forever). Kill them with the WoW Oracle addon on and the drops show up here.";
         else if (shown.Count == 0 && !LootShowAll)
             LootSubtitle = $"{boss.Name} has no loot of their own, only random world drops and grey/white items ({hidden}). Tick the box above to see them.";
     }

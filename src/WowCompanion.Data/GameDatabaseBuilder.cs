@@ -38,6 +38,8 @@ public static partial class GameDatabaseBuilder
         "ItemModifiedAppearance", "ItemAppearance",
         // zone map pictures (Map page): which tiles make up each map
         "UiMapXMapArt", "UiMapArt", "UiMapArtStyleLayer", "UiMapArtTile", "WorldMapOverlay", "WorldMapOverlayTile",
+        // map search (towns, landmarks, flight masters) and dungeon bosses (WoW Forever's own dungeons too)
+        "AreaPOI", "TaxiNodes", "DungeonEncounter",
         // WoW Forever talents (trait trees). The Cond/Group/Currency tables are fetched for the next step: exact unlock rules.
         "TraitEdge", "TraitDefinitionEffectPoints", "CurvePoint", // per-rank talent values (Improved Seals 5/10/15%)
         "TraitCond", "TraitNodeGroup", "TraitNodeGroupXTraitNode", "TraitNodeGroupXTraitCond", "TraitNodeXTraitCond",
@@ -170,7 +172,7 @@ public static partial class GameDatabaseBuilder
         CREATE INDEX recipes_created ON recipes (created_item_id);
         CREATE INDEX reagents_item ON recipe_reagents (item_id);
         CREATE INDEX reagents_spell ON recipe_reagents (spell_id);
-        """ + SpellSchema + TalentSchema + SourceImporter.Schema + EnchantSchema + MapSchema + HiddenSchema;
+        """ + SpellSchema + TalentSchema + SourceImporter.Schema + EnchantSchema + MapSchema + PlacesSchema + HiddenSchema;
 
     /// <summary>Notes from the last build (e.g. an optional table that was missing).</summary>
     public static IReadOnlyList<string> ItemsMissingNumbers { get; private set; } = [];
@@ -266,6 +268,12 @@ public static partial class GameDatabaseBuilder
             var mapCount = 0;
             try { mapCount = BuildMaps(connection, transaction, Csv); }
             catch (Exception ex) { numbers.Warnings.Add("Maps skipped: " + ex.Message); }
+            var placeCount = 0;
+            try { placeCount = BuildPlaces(connection, transaction, Csv); }
+            catch (Exception ex) { numbers.Warnings.Add("Map places skipped: " + ex.Message); }
+            var bossCount = 0;
+            try { bossCount = BuildDungeonBosses(connection, transaction, Csv); }
+            catch (Exception ex) { numbers.Warnings.Add("Dungeon bosses skipped: " + ex.Message); }
             var sourceRows = 0;
             if (sourcesDump is not null && File.Exists(sourcesDump))
             {
@@ -288,6 +296,8 @@ public static partial class GameDatabaseBuilder
                 ["source_rows"] = sourceRows.ToString(),
                 ["enchants"] = enchantCount.ToString(),
                 ["maps"] = mapCount.ToString(),
+                ["map_places"] = placeCount.ToString(),
+                ["dungeon_bosses"] = bossCount.ToString(),
                 ["hidden_items"] = hiddenCount.ToString(),
             })
             {

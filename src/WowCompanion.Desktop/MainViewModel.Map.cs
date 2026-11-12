@@ -161,6 +161,58 @@ public partial class MainViewModel
         SelectedMapZone = MapZones.FirstOrDefault(m => m.UiMapId == map.UiMapId) ?? map;
     }
 
+    // ----- search: zones, subzones, towns, flight masters, NPCs -----
+
+    public ObservableCollection<MapSearchHit> MapHits { get; } = [];
+    private CancellationTokenSource? _mapSearchCts;
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMapSearching), nameof(IsNotMapSearching))] private string _mapSearchText = "";
+    [ObservableProperty] private MapSearchHit? _selectedMapHit;
+
+    /// <summary>While there's search text the results replace the zone list.</summary>
+    public bool IsMapSearching => MapSearchText.Trim().Length >= 2;
+    public bool IsNotMapSearching => !IsMapSearching;
+
+    partial void OnMapSearchTextChanged(string value) => _ = SearchMapAsync(value);
+
+    private async Task SearchMapAsync(string text)
+    {
+        _mapSearchCts?.Cancel();
+        var cts = _mapSearchCts = new CancellationTokenSource();
+        if (_maps is not { } maps || text.Trim().Length < 2) { MapHits.Clear(); return; }
+        try
+        {
+            await Task.Delay(150, cts.Token);
+            var hits = await Task.Run(() => maps.Search(text), cts.Token);
+            if (cts.IsCancellationRequested) return;
+            MapHits.Clear();
+            foreach (var hit in hits) MapHits.Add(hit);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    partial void OnSelectedMapHitChanged(MapSearchHit? value)
+    {
+        if (value is not null) GoToMapHit(value);
+    }
+
+    /// <summary>Enter in the search box: the first answer.</summary>
+    [RelayCommand]
+    private void PickFirstMapHit()
+    {
+        if (MapHits.FirstOrDefault() is { } hit) GoToMapHit(hit);
+    }
+
+    private void GoToMapHit(MapSearchHit hit)
+    {
+        if (hit.HasSpot) ViewOnMap(new MapSpot(hit.Zone, hit.X, hit.Y, hit.Kind == "zone" ? "" : hit.Name));
+        else OpenZoneMap(hit.Zone);
+    }
+
+    /// <summary>Esc in the search box, or "Clear": back to the zone list.</summary>
+    [RelayCommand]
+    private void ClearMapSearch() => MapSearchText = "";
+
     /// <summary>Map coordinates under the mouse, like the game's map (x, y in 0-100).</summary>
     public void SetMapCursor(double x, double y) =>
         MapCursorText = x < 0 ? "" : $"{x.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}, {y.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}";

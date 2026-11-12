@@ -48,6 +48,9 @@ public sealed class LootService
         ["Avatar of Hakkar"] = 109, ["Ouro"] = 531, ["General Rajaxx"] = 509,
     };
 
+    /// <summary>WoW Forever's own instances have map ids from here on (The Drowned City 2970, Blackmaw Hold 2974…).</summary>
+    public const int FirstForeverMap = 2900;
+
     public LootService(string databasePath)
     {
         _connectionString = new SqliteConnectionStringBuilder
@@ -107,9 +110,35 @@ public sealed class LootService
             ORDER BY m.instance_type, MAX(n.max_level), m.name
             """;
         var result = new List<LootInstance>();
-        using var r = command.ExecuteReader();
-        while (r.Read())
-            result.Add(new LootInstance(r.GetInt32(0), r.GetString(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4)));
+        using (var r = command.ExecuteReader())
+            while (r.Read())
+                result.Add(new LootInstance(r.GetInt32(0), r.GetString(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4)));
+
+        // Dungeons the Classic world data doesn't have (WoW Forever's own: The Drowned City, Blackmaw Hold…): the
+        // client lists their bosses (game data schema 29). Level unknown (0); each type's new ones come after the rest.
+        // Only maps from FirstForeverMap on: the client still carries Season of Discovery's (Demon Fall Canyon,
+        // Karazhan Crypts…, ids 2700-2899) and test maps.
+        try
+        {
+            using var extra = connection.CreateCommand();
+            extra.CommandText = """
+                SELECT m.id, m.name, m.instance_type FROM maps m
+                WHERE m.instance_type IN (1, 2) AND m.id >= $first AND EXISTS (SELECT 1 FROM dungeon_bosses b WHERE b.map_id = m.id)
+                ORDER BY m.instance_type, m.name
+                """;
+            extra.Parameters.AddWithValue("$first", FirstForeverMap);
+            var known = result.Select(i => i.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var have = result.Select(i => i.MapId).ToHashSet();
+            using var r = extra.ExecuteReader();
+            while (r.Read())
+            {
+                if (have.Contains(r.GetInt32(0)) || known.Contains(r.GetString(1))) continue; // a Classic one under a new id
+                var instance = new LootInstance(r.GetInt32(0), r.GetString(1), r.GetInt32(2), 0, 0);
+                var at = result.FindLastIndex(i => i.Type == instance.Type) + 1;
+                result.Insert(at == 0 ? (instance.Type == 1 ? 0 : result.Count) : at, instance);
+            }
+        }
+        catch (SqliteException) { } // older game data without the boss list
         return result;
     }
 
@@ -148,6 +177,8 @@ public sealed class LootService
             npcs = ReadNpcs(command);
         }
 
+        if (npcs.Count == 0 && summoned.Count == 0) return ClientBosses(connection, mapId, mapName);
+
         var bosses = Bosses(connection, npcs, forced: summoned.ToHashSet(StringComparer.OrdinalIgnoreCase));
 
         // Dungeons: named elites a level above the usual trash (Ragefire's Oggleflint) are bosses even when
@@ -163,6 +194,44 @@ public sealed class LootService
 
         bosses.AddRange(Chests(connection, mapId, mapName));
         return bosses.OrderBy(b => b.IsObject).ThenBy(b => b.MaxLevel).ThenBy(b => b.MinLevel).ThenBy(b => b.Name).ToList();
+    }
+
+    /// <summary>
+    /// A dungeon without Classic world data: its bosses from the client's list, in encounter order. A boss the addon
+    /// has seen (an NPC of that name) brings its id, so the drops recorded from your kills show; otherwise NpcId is 0.
+    /// </summary>
+    private static List<LootBoss> ClientBosses(SqliteConnection connection, int mapId, string mapName)
+    {
+        var list = new List<LootBoss>();
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT b.name,
+                       (SELECT n.id FROM npcs n WHERE n.name = b.name
+                        ORDER BY (SELECT COUNT(*) FROM item_sources s WHERE s.kind = 'drop' AND s.ref_id = n.id) DESC LIMIT 1)
+                FROM dungeon_bosses b WHERE b.map_id = $m ORDER BY b.ord, b.name
+                """;
+            command.Parameters.AddWithValue("$m", mapId);
+            var ids = new List<(string Name, int Id)>();
+            using (var r = command.ExecuteReader())
+                while (r.Read()) ids.Add((r.GetString(0), r.IsDBNull(1) ? 0 : r.GetInt32(1)));
+            foreach (var (name, id) in ids)
+            {
+                int min = 0, max = 0;
+                if (id > 0)
+                {
+                    using var levels = connection.CreateCommand();
+                    levels.CommandText = "SELECT min_level, max_level FROM npcs WHERE id = $id";
+                    levels.Parameters.AddWithValue("$id", id);
+                    using var r = levels.ExecuteReader();
+                    if (r.Read()) (min, max) = (r.GetInt32(0), r.GetInt32(1));
+                }
+                list.Add(new LootBoss(id, name, 3, min, max, mapId, mapName));
+            }
+        }
+        catch (SqliteException) { }
+        return list;
     }
 
     /// <summary>Boss chests in the instance (Cache of the Firelord, Chest of The Seven, Dark Coffer).</summary>

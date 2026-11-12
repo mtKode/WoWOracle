@@ -126,6 +126,13 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   modifiers.
 - **Upgrades**: alternatives ranked by the stats the set already leans on (stat budget prices, e.g. 1% crit = 14
   points), filtered by proficiency and level.
+- **Map search** (`map_places`, `MapService.Search`): subzones (AreaTable with a parent) at the middle of their
+  explored-area patch (`WorldMapOverlay.AreaID_0-3`), towns and landmarks (`AreaPOI`) and flight masters (`TaxiNodes`)
+  from their world position, which win over a patch centre; NPCs from `npcs`. Subzones without a spot open their zone.
+- **Forever's own zones and dungeons**: the Classic world data (CMaNGOS) has nothing for them. Classic spawns are placed
+  with `ZoneLocator(classicOnly)`, which leaves out Forever's zone maps (UiMap 2000+): their rectangles overlap the
+  old zones (Riverglades over the Burning Steppes). Dungeons from map 2900 on are listed from `DungeonEncounter`
+  (`dungeon_bosses`); a boss's loot comes from the addon's sightings, matched by NPC name.
 - **Auction prices** (`AuctionatorData`, optional): `WTF\Account\*\SavedVariables\Auctionator.lua`,
   `AUCTIONATOR_PRICE_DATABASE`: one Lua string per realm, each a CBOR map of item id → `m` (lowest price at the last
   scan, copper), `h` / `l` (high / low per scan day, days since 2020-01-01), `a` (count up per day). Read at start-up
