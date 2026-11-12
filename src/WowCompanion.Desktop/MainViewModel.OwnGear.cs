@@ -24,6 +24,8 @@ public partial class MainViewModel
             {
                 var text = block[(block.IndexOf('\n') + 1)..];
                 if (!CharacterImport.TryParse(text, out var export, out _) || export is null || export.FromInspect) continue;
+                // No items and no health: saved while logging out (addon 0.10.0 and older). Keep the set as it is.
+                if (export.Items.Count == 0 && export.Stats.GetValueOrDefault("hp") is null or "0") continue;
                 var time = TimeOf(text);
                 if (!exports.TryGetValue(export.Name, out var have) || time > have.Time) exports[export.Name] = (export, text, time);
             }

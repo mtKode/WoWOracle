@@ -132,6 +132,11 @@ public static class UserDatabase
             PRIMARY KEY (profession, name)
         );
         """,
+        // Addon 0.10.0 and older recorded base stats while logging out, when every stat reads 0 (and as "naked",
+        // so they were never replaced).
+        """
+        DELETE FROM base_stats WHERE str <= 0 OR agi <= 0 OR sta <= 0 OR int <= 0 OR spi <= 0;
+        """,
     ];
 
     public static void Initialize(string path)

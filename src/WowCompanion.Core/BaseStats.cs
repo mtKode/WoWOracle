@@ -29,6 +29,8 @@ public sealed record BaseStatRow(int ClassId, int RaceId, int Level, double[] St
         var (cls, race, level) = (I(p[0]), I(p[1]), I(p[2]));
         if (cls <= 0 || race <= 0 || level <= 0) return null;
         var stats = p[3..8].Select(s => (double)I(s)).ToArray();
+        // All zero (or any zero): the addon read a character the client had already let go of (logging out).
+        if (stats.Any(s => s <= 0)) return null;
         var vitalParts = (vitals ?? "").Split(';');
         var naked = vitalParts.Length > 2 && vitalParts[2] == "1";
         return new BaseStatRow(cls, race, level, stats, naked ? I(vitalParts[0]) : 0, naked ? I(vitalParts[1]) : 0, naked, build.Trim());

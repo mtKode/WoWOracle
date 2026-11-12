@@ -1139,7 +1139,8 @@ local function recordBaseStats()
     local base, bonus = {}, false
     for i = 1, 5 do
         local stat, _, posBuff, negBuff = UnitStat("player", i)
-        if not stat then return end
+        -- 0 means the client has no character data (logging out): nothing to record.
+        if not stat or stat <= 0 then return end
         base[i] = stat - (posBuff or 0) - (negBuff or 0)
         if (posBuff or 0) ~= 0 or (negBuff or 0) ~= 0 then bonus = true end
     end
@@ -1231,14 +1232,24 @@ local function baseStatsSoon()
     end)
 end
 
+-- While logging out the client has already let go of the character: no health, no stats, no skill lines, half the
+-- bags. Reading then would overwrite good data with empty data, so the logout save keeps what was read in play.
+local function characterReady()
+    return (UnitHealthMax("player") or 0) > 0 and ((UnitStat("player", 1)) or 0) > 0
+end
+
 local function refreshCharacter(what)
+    if not characterReady() then return end
     if what == "all" then pcall(recordBaseStats) end
-    if what == "skills" or what == "all" then charState.skills = readSkills() end
+    if what == "skills" or what == "all" then
+        local skills = readSkills()
+        if next(skills) or not next(charState.skills or {}) then charState.skills = skills end
+    end
     if what == "bags" or what == "all" then charState.bags = readBags(BAG_IDS) end
     if what == "bank" then charState.bank = readBags(BANK_IDS) end
     if what == "recipes" or what == "all" then
         local profession, ids = readOpenRecipes()
-        if profession and #ids > 0 then charState.recipes[profession] = ids end
+        if profession and profession ~= "" and #ids > 0 then charState.recipes[profession] = ids end
     end
     saveCharacter()
 end
@@ -1277,8 +1288,9 @@ local function saveSelfExport()
     end)
 end
 
--- At logout there's no time to wait: save what the client has right now.
+-- /reload or /oracle sync: save what the client has right now (at logout it has nothing: keep the last save).
 local function saveSelfExportNow()
+    if not characterReady() then return end
     local ok, text = pcall(buildExport, "player", false)
     if ok then storeSelfExport(text) end
 end
