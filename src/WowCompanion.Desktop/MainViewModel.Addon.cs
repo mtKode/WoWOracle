@@ -8,7 +8,8 @@ namespace WowCompanion.Desktop;
 /// - quests: kept in user.sqlite (so the addon file can be cleared) and added to the game data when it lacks them;
 /// - talent trees: a class's tree replaces the downloaded one only when the game client's build is newer;
 /// - sightings: new NPCs, vendors and loot (MainViewModel.Seen.cs);
-/// - trainer windows: the skill each recipe is taught at, which the game data lacks.
+/// - trainer windows: the skill each recipe is taught at, which the game data lacks;
+/// - subzone spots: where you were in subzones the game data can't place (map search).
 /// wago.tools and the CMaNGOS data stay the master; the addon only fills gaps.
 /// </summary>
 public partial class MainViewModel
@@ -124,6 +125,9 @@ public partial class MainViewModel
 
         /// <summary>Recipes whose learn skill in the game data now comes from a trainer window.</summary>
         public int TrainerRecipes { get; init; }
+
+        /// <summary>Subzones that got a spot on the map from where you've been.</summary>
+        public int PlacedSubzones { get; init; }
     }
 
     private readonly BaseStatsStore _baseStats = new(paths.UserDbPath);
@@ -144,6 +148,23 @@ public partial class MainViewModel
     }
 
     private readonly TrainerSkillStore _trainerSkills = new(paths.UserDbPath);
+    private readonly PlaceSightingStore _placeSightings = new(paths.UserDbPath);
+
+    /// <summary>"!WOWORACLE-PLACE 1" blocks into user.sqlite, then into the game data's map places (gaps only).</summary>
+    private int ApplyPlaceSightings(string gameDbPath, IEnumerable<string> addonTexts)
+    {
+        try
+        {
+            var read = addonTexts.SelectMany(t => AddonSavedData.Blocks(t, PlaceSighting.Marker))
+                .Select(PlaceSighting.Parse).OfType<PlaceSighting>().ToList();
+            if (read.Count > 0) _placeSightings.Save(read);
+            return PlaceSightingStore.ApplyTo(gameDbPath, _placeSightings.All());
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
 
     /// <summary>
     /// "!WOWORACLE-TRAINER 1" blocks into user.sqlite, then all trainer skills into the game data's recipes.
@@ -189,6 +210,7 @@ public partial class MainViewModel
         var newSightings = LearnAddonSightings(texts);
         var sightings = InjectSightings(gameDbPath); // new NPCs, vendors, loot
         var trainerRecipes = ApplyTrainerSkills(gameDbPath, texts);
+        var placedSubzones = ApplyPlaceSightings(gameDbPath, texts);
         (List<string> Classes, int Build) talentTrees = talents ? ApplyAddonTalents(gameDbPath, version, texts) : (new List<string>(), 0);
         // After the gaps are filled, so the addon doesn't record them again; only rebuilt when something changed.
         var changed = items > 0 || quests.Added.Count + quests.Updated.Count > 0 || sightings.Any;
@@ -197,6 +219,7 @@ public partial class MainViewModel
         {
             NewBaseStats = newBase,
             TrainerRecipes = trainerRecipes,
+            PlacedSubzones = placedSubzones,
         };
     }
 
@@ -237,6 +260,8 @@ public partial class MainViewModel
             Log($"Base stats from the game: {Plural(r.NewBaseStats, "new class/race/level")} recorded (the Calculator uses them instead of its estimate).", "addon");
             if (_characterLoaded) Recalculate();
         }
+        if (r.PlacedSubzones > 0)
+            Log($"From your travels: {Plural(r.PlacedSubzones, "subzone")} now on the map (map search).", "addon");
         if (r.TrainerRecipes > 0)
             Log($"Trainer skills from the game: {Plural(r.TrainerRecipes, "recipe")} now show the skill the trainer teaches them at (the profession planner uses it).", "addon");
         ReportKnownIds(r.Known);

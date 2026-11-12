@@ -128,7 +128,9 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   points), filtered by proficiency and level.
 - **Map search** (`map_places`, `MapService.Search`): subzones (AreaTable with a parent) at the middle of their
   explored-area patch (`WorldMapOverlay.AreaID_0-3`), towns and landmarks (`AreaPOI`) and flight masters (`TaxiNodes`)
-  from their world position, which win over a patch centre; NPCs from `npcs`. Subzones without a spot open their zone.
+  from their world position, which win over a patch centre; NPCs from `npcs`. A subzone without a spot borrows one
+  from an NPC named after it ("Bandarion Keep Paladin"), or from the addon's `!WOWORACLE-PLACE` samples; otherwise
+  it opens the whole zone.
 - **Forever's own zones and dungeons**: the Classic world data (CMaNGOS) has nothing for them. Classic spawns are placed
   with `ZoneLocator(classicOnly)`, which leaves out Forever's zone maps (UiMap 2000+): their rectangles overlap the
   old zones (Riverglades over the Burning Steppes). Dungeons from map 2900 on are listed from `DungeonEncounter`
@@ -163,6 +165,7 @@ Everything the addon saves is a text block: a marker line, `key=value` lines, `!
 | `!WOWORACLE-SELF 1` | Your own export, saved by itself | Own gear sync (sets named exactly after the character) |
 | `!WOWORACLE-CHAR 1` | Profession ranks, known recipes, bag and bank counts | Crafting planner |
 | `!WOWORACLE-TALENTS 1` | The live talent tree: `node=id;x;y;maxRanks;spell;icon;unlocks;name;description` | Used only when the client build is newer than the wago.tools data |
+| `!WOWORACLE-PLACE 1` | Where you were in a subzone, averaged: `place=zone;subzone;x;y;samples` (sampled every 8 s, up to 60) | `seen_places` (user.sqlite) → `map_places`, only subzones without a spot, from 5 samples on |
 | `!WOWORACLE-TRAINER 1` | One per profession, all trainers merged: `profession=`, `recipe=skill;itemId;level;name` (the trainer window's skill requirement) | `trainer_skills` (user.sqlite) → `recipes.min_skill`, `skill_source = 'trainer'` |
 | `!WOWORACLE-BASE 1` | Base stats per class/race/level: `base=class;race;level;str;agi;sta;int;spi` (paper-doll stat minus gear and buffs), `vitals=health;mana;naked` | `base_stats` (user.sqlite) → Calculator naked stats (exact level, else interpolated) |
 | `!WOWORACLE-QUEST 1` | Quests the data lacks: giver, where, rewards, `itemdata=` | `learned_quests` → game database |

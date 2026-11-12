@@ -137,6 +137,17 @@ public static class UserDatabase
         """
         DELETE FROM base_stats WHERE str <= 0 OR agi <= 0 OR sta <= 0 OR int <= 0 OR spi <= 0;
         """,
+        """
+        CREATE TABLE seen_places (
+            zone TEXT NOT NULL,
+            name TEXT NOT NULL,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            samples INTEGER NOT NULL,
+            updated_utc TEXT NOT NULL,
+            PRIMARY KEY (zone, name)
+        );
+        """,
     ];
 
     public static void Initialize(string path)

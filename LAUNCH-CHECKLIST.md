@@ -6,7 +6,7 @@ before launch).
 
 ## 1. Setup and addon install
 - [ ] Start the app. The bar above the search box shows `_forever_ (Forever)   not installed` → **Install addon**.
-- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.10.1` in green.
+- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.11.0` in green.
 - [ ] In game, the addon is listed and **not** "out of date". The TOC says `## Interface: 16001` (beta). If the
       release client has a new interface number (`/dump select(4, GetBuildInfo())`), update the TOC, rebuild, Update addon.
 - [ ] The leftover `_classic_beta_` folder is ignored (shown nowhere). Delete it if Battle.net left it behind.
@@ -60,6 +60,8 @@ before launch).
 - [ ] Loot: The Drowned City lists Zul'Alai, Var'Taka, Captain Dreadrise… After a run with the addon on and `/oracle sync`,
       the bosses you killed show their drops.
 - [ ] Map: search "freewind", "shimmering", a Riverglades subzone and an NPC; each opens the zone with a marker on the spot.
+- [ ] Addon 0.11.0: spend a minute in a subzone the search shows as "(whole zone)" (Faol's Rest), `/oracle sync`: the
+      Chronicle says "From your travels: 1 subzone now on the map" and the search puts a marker there.
 
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.

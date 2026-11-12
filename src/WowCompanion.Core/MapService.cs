@@ -199,6 +199,24 @@ public sealed class MapService(string databasePath)
                     hits.Add(new MapSearchHit(r.GetString(0), "npc", r.GetString(4), r.GetDouble(5), r.GetDouble(6), string.Join(", ", detail)));
                 }
             }
+
+            // A subzone the game data can't place (new in WoW Forever: Bandarion Keep) often has NPCs named after it
+            // ("Bandarion Keep Paladin"): their spot stands in for the subzone's.
+            for (var i = 0; i < hits.Count; i++)
+            {
+                var hit = hits[i];
+                if (hit.Kind != "subzone" || hit.HasSpot) continue;
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    SELECT name, zone_x, zone_y FROM npcs
+                    WHERE zone = $z AND zone_x > 0 AND name LIKE $n ESCAPE '\'
+                    ORDER BY length(name) LIMIT 1
+                    """;
+                command.Parameters.AddWithValue("$z", hit.Zone);
+                command.Parameters.AddWithValue("$n", hit.Name.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + " %");
+                using var r = command.ExecuteReader();
+                if (r.Read()) hits[i] = hit with { X = r.GetDouble(1), Y = r.GetDouble(2), Detail = $"near {r.GetString(0)}" };
+            }
         }
         catch (SqliteException) { }
 
@@ -229,7 +247,9 @@ public sealed record MapSearchHit(string Name, string Kind, string Zone, double 
                 "flight" => "Flight master",
                 _ => Detail.Length > 0 ? $"NPC · {Detail}" : "NPC",
             };
-            return Kind == "zone" ? kind : $"{kind} · {Zone}" + (HasSpot ? "" : " (whole zone)");
+            if (Kind == "zone") return kind;
+            var where = !HasSpot ? " (whole zone)" : Kind != "npc" && Detail.Length > 0 ? $" ({Detail})" : "";
+            return $"{kind} · {Zone}{where}";
         }
     }
 }

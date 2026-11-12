@@ -1567,6 +1567,29 @@ local function seenCounts()
 end
 
 -- ------------------------------------------------------------------------------------------------
+-- Where subzones are: while you're in one (Bandarion Keep, Freewind Post…), your spot on the zone map is noted every
+-- few seconds and averaged, so the app's map search can place subzones its data has no spot for. One small entry
+-- per subzone in WoWOracleDB.places; it stops counting after 60 samples.
+-- ------------------------------------------------------------------------------------------------
+
+local PLACE_SAMPLES = 60
+
+local function notePlace()
+    if not characterReady() then return end
+    local sub = (GetSubZoneText and try(GetSubZoneText)) or ""
+    local zoneName, x, y = playerPlace()
+    if sub == "" or sub == zoneName or zoneName == "" or (x or 0) <= 0 or (y or 0) <= 0 then return end
+    WoWOracleDB = WoWOracleDB or {}
+    WoWOracleDB.places = WoWOracleDB.places or {}
+    local key = zoneName .. ":" .. sub
+    local p = WoWOracleDB.places[key] or { n = 0, x = 0, y = 0 }
+    if p.n >= PLACE_SAMPLES then return end
+    p.n, p.x, p.y = p.n + 1, p.x + x, p.y + y
+    p.text = ("!WOWORACLE-PLACE 1\nplace=%s;%s;%.1f;%.1f;%d\n!END"):format(clean(zoneName), clean(sub), p.x / p.n, p.y / p.n, p.n)
+    WoWOracleDB.places[key] = p
+end
+
+-- ------------------------------------------------------------------------------------------------
 -- Startup
 -- ------------------------------------------------------------------------------------------------
 
@@ -1581,7 +1604,7 @@ for _, e in ipairs({ "SKILL_LINES_CHANGED", "TRADE_SKILL_SHOW", "TRADE_SKILL_UPD
                      "CRAFT_UPDATE", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED", "PLAYERBANKSLOTS_CHANGED",
                      "PLAYER_EQUIPMENT_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED",
                      "PLAYER_LEVEL_UP", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "MERCHANT_SHOW", "LOOT_READY",
-                     "LOOT_OPENED", "TRAINER_SHOW" }) do
+                     "LOOT_OPENED", "TRAINER_SHOW", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA" }) do
     pcall(events.RegisterEvent, events, e) -- some don't exist on every client
 end
 events:SetScript("OnEvent", function(_, event, name, extra)
@@ -1600,6 +1623,7 @@ events:SetScript("OnEvent", function(_, event, name, extra)
         C_Timer.After(20, function() pcall(pruneSeen) end)
         C_Timer.After(6, function() pcall(refreshCharacter, "all") end)
         C_Timer.After(7, function() pcall(saveSelfExport) end)
+        if C_Timer.NewTicker then C_Timer.NewTicker(8, function() pcall(notePlace) end) end
     elseif event == "PLAYER_LOGOUT" then
         pcall(captureTalentLayout, true) -- latest tree into the saved file
         pcall(refreshCharacter, "all")
@@ -1630,6 +1654,8 @@ events:SetScript("OnEvent", function(_, event, name, extra)
         pcall(sawUnit, "mouseover")
     elseif event == "MERCHANT_SHOW" then
         onMerchantShow()
+    elseif event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED_NEW_AREA" then
+        C_Timer.After(1, function() pcall(notePlace) end) -- the map position settles a moment after
     elseif event == "TRAINER_SHOW" then
         C_Timer.After(0.3, function() pcall(readTrainer) end) -- the list fills right after the window opens
     elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
