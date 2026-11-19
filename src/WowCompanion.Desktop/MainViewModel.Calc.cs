@@ -24,6 +24,7 @@ public partial class MainViewModel
     private List<CalcSpell> _allCalcSpells = [];
     private CharacterSheet? _sheet;
     private List<TalentSpell> _talentSpells = [];
+    private List<string> _castTalents = [];
     private Dictionary<int, List<EffectRow>> _effects = new();
     private List<GearItem> _calcGear = [];
     private GearItem? _calcMainHand;
@@ -102,8 +103,15 @@ public partial class MainViewModel
         CalcRanks.Clear();
         if (value is not null)
         {
-            foreach (var s in _allCalcSpells.Where(x => x.Name == value.Name))
-                CalcRanks.Add(new SpellRow(s.Id, s.Rank.Length > 0 ? s.Rank : s.Name, $"level {s.SpellLevel}", s.IconId));
+            var ranks = _allCalcSpells.Where(x => x.Name == value.Name).ToList();
+            // Holy Shock: each rank is a damage part and a heal part; say which is which.
+            var split = ranks.GroupBy(x => x.Rank).Any(g => g.Count() > 1);
+            foreach (var s in ranks)
+            {
+                var label = s.Rank.Length > 0 ? s.Rank : s.Name;
+                if (split) label += s.Heals && !s.Damages ? " · heal" : s.Damages && !s.Heals ? " · damage" : "";
+                CalcRanks.Add(new SpellRow(s.Id, label, $"level {s.SpellLevel}", s.IconId));
+            }
         }
         SelectedCalcRank = CalcRanks.FirstOrDefault();
         ComputeDamage();
@@ -143,7 +151,40 @@ public partial class MainViewModel
     {
         if (_loadingCalc) return;
         _gearSets.SetSetting("calc_gear_set", (value?.Id ?? 0).ToString(CultureInfo.InvariantCulture));
-        Recalculate();
+        if (FollowGameCharacter(value)) RefreshCalcTalentSets();
+        else Recalculate();
+    }
+
+    /// <summary>
+    /// A gear set from the game (it has your character sheet with it) is a real character: the calculator takes its
+    /// class, race and level, and the talent set of the same name. Returns whether anything changed (nothing is
+    /// recalculated here).
+    /// </summary>
+    private bool FollowGameCharacter(GearSetInfo? set)
+    {
+        if (set is not { Id: > 0, Level: > 0 } || _gearSets.GetSetting($"gamesheet:{set.Id}") is not { Length: > 0 }) return false;
+        var cls = TalentClasses.FirstOrDefault(c => c.Id == set.ClassId);
+        var race = Races.FirstOrDefault(r => r.Id == set.RaceId);
+        if (cls is null || race is null) return false;
+        if (CalcClass?.Id == cls.Id && CalcRace?.Id == race.Id && CalcLevel == set.Level) return false;
+
+        var was = _loadingCalc;
+        _loadingCalc = true;
+        (CalcClass, CalcRace, CalcLevel) = (cls, race, Math.Clamp(set.Level, 1, 60));
+        _loadingCalc = was;
+        _gearSets.SetSetting("calc_character", string.Join(',', cls.Id, race.Id, CalcLevel));
+        if (_talentBuilds.List(cls.Id).FirstOrDefault(t => t.Name == set.Name) is { } talents)
+        {
+            _gearSets.SetSetting(CalcTalentKey(cls.Id), talents.Id.ToString(CultureInfo.InvariantCulture));
+            if (CalcTalentSets.FirstOrDefault(t => t.Id == talents.Id) is { } listed)
+            {
+                _loadingCalcTalents = true;
+                SelectedCalcTalentSet = listed;
+                _loadingCalcTalents = false;
+            }
+        }
+        LoadNaked();
+        return true;
     }
 
     partial void OnNakedStrChanged(string value) => NakedChanged();
@@ -204,6 +245,7 @@ public partial class MainViewModel
         RefreshCalcGearChoices();
         _loadingCalc = false;
         _characterLoaded = true;
+        FollowGameCharacter(CalcGearSet); // your character may have levelled since
         RefreshCalcTalentSets();
     }
 
@@ -218,6 +260,8 @@ public partial class MainViewModel
         foreach (var set in GearSets) CalcGearChoices.Add(set);
         CalcGearSet = CalcGearChoices.FirstOrDefault(s => s.Id == wanted) ?? NoGear;
         _loadingCalc = was;
+        // The addon just updated the set the calculator uses (a level up): follow it.
+        if (!was && _characterLoaded && FollowGameCharacter(CalcGearSet)) RefreshCalcTalentSets();
     }
 
     private void BuffsChanged()
@@ -281,6 +325,19 @@ public partial class MainViewModel
                     : new TalentSpell(talent.RankSpells[rank - 1], 1, $"{talent.Name} {rank}/{talent.MaxRank}"));
             }
             picked.Add(points.ToString(CultureInfo.InvariantCulture));
+        }
+
+        // Talents you cast (Divine Favor: "your next heal crits") aren't always on: their points count, their
+        // effect doesn't.
+        _castTalents = [];
+        if (_calcData is not null)
+        {
+            var active = _calcData.ActiveSpells(spells.Select(s => s.SpellId).ToList());
+            var auras = _calcData.GetEffects(active.ToList());
+            // Only the ones that would have changed a number (Divine Favor), not new spells (Holy Shock).
+            _castTalents = spells.Where(s => auras.TryGetValue(s.SpellId, out var e) && e.Any(x => x.Effect == 6))
+                .Select(s => s.Source).ToList();
+            spells.RemoveAll(s => active.Contains(s.SpellId));
         }
         return (spells, string.Join("/", picked));
     }
@@ -399,6 +456,9 @@ public partial class MainViewModel
             WeaponLines.Add(row);
         HasWeapons = WeaponLines.Count > 0;
         foreach (var note in _sheet.Notes) CalcNotes.Add(note);
+        if (_castTalents.Count > 0)
+            CalcNotes.Add($"Not counted, you cast them: {string.Join(", ", _castTalents)}.");
+        if (gearSet is not null && GameSheetNote(gearSet, cls.Id) is { } inGame) CalcNotes.Add(inGame);
 
         // Gear page: what the selected gear set alone adds.
         RefreshGearTotals();
@@ -410,6 +470,28 @@ public partial class MainViewModel
             FilterCalcSpells();
         }
         ComputeDamage();
+    }
+
+    /// <summary>
+    /// Your character sheet from the game (saved with a gear set the addon synced) next to the calculator's numbers,
+    /// when the calculator is set to that character's class and level. Null otherwise.
+    /// </summary>
+    private string? GameSheetNote(GearSetInfo set, int classId)
+    {
+        if (_sheet is null || set.ClassId != classId || set.Level != CalcLevel) return null;
+        var stats = (_gearSets.GetSetting($"gamesheet:{set.Id}") ?? "").Split(';')
+            .Select(p => p.Split('=', 2)).Where(p => p.Length == 2).ToDictionary(p => p[0], p => p[1]);
+        if (stats.Count == 0) return null;
+        var inv = CultureInfo.InvariantCulture;
+        var parts = new List<string>();
+        void Compare(string key, string label, double here, string unit)
+        {
+            if (stats.TryGetValue(key, out var text) && double.TryParse(text, NumberStyles.Float, inv, out var game))
+                parts.Add($"{label} {game.ToString("0.##", inv)}{unit} (here {here.ToString("0.##", inv)}{unit})");
+        }
+        Compare("crit", "melee crit", _sheet.MeleeCrit, "%");
+        Compare("scrit", "spell crit", _sheet.SpellCrit, "%");
+        return parts.Count == 0 ? null : $"In game, level {set.Level}: {string.Join(", ", parts)}.";
     }
 
     /// <summary>Gear page totals: the Gear page's selected set on its own (no character).</summary>

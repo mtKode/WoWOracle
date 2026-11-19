@@ -147,6 +147,10 @@ public sealed class StatBag
             case 54: Add(Stat.MeleeHitPct, amount); return true;
             case 55: Add(Stat.SpellHitPct, amount); return true;
             case 57: Add(Stat.SpellCritPct, amount); return true;
+            case 290: // crit % with everything (Conviction in WoW Forever)
+                Add(Stat.MeleeCritPct, amount);
+                Add(Stat.SpellCritPct, amount);
+                return true;
             case 71: // spell crit % for a school
                 foreach (var school in Schools(misc)) if (SchoolCritPct(school) is { } c) Add(c, amount);
                 return true;

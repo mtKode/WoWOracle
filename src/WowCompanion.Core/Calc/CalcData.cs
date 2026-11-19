@@ -168,7 +168,11 @@ public sealed class CalcDataService(string databasePath)
                    EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id AND {HealEffects}),
                    EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id AND {DamageEffects})
             FROM spells s
-            WHERE s.is_class_spell = 1 AND s.class_id = $c AND s.spell_level <= $level
+            WHERE s.class_id = $c AND s.spell_level <= $level
+              -- WoW Forever's own ranks (Holy Shock rank 1) are a class spell with only a dummy effect, plus damage
+              -- and heal parts with the same name and rank that aren't marked as class spells.
+              AND (s.is_class_spell = 1 OR (s.rank <> '' AND EXISTS (SELECT 1 FROM spells p
+                   WHERE p.is_class_spell = 1 AND p.class_id = s.class_id AND p.name = s.name AND p.rank = s.rank)))
               AND EXISTS (SELECT 1 FROM spell_effects e WHERE e.spell_id = s.id AND ({DamageEffects} OR {HealEffects}))
             ORDER BY s.name, s.spell_level DESC, s.id DESC
             """;
@@ -187,6 +191,25 @@ public sealed class CalcDataService(string databasePath)
                 Damages = r.GetInt64(13) != 0,
             });
         }
+        return result;
+    }
+
+    /// <summary>
+    /// The spells among these that you cast yourself (a cooldown or a cost): talents like Divine Favor, whose effect
+    /// is only there for the next spell after you press it, so the calculator doesn't count it as always on.
+    /// </summary>
+    public IReadOnlySet<int> ActiveSpells(IReadOnlyCollection<int> ids)
+    {
+        var result = new HashSet<int>();
+        if (ids.Count == 0) return result;
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT id FROM spells WHERE id IN {In(command, ids)}
+              AND (cooldown_ms > 0 OR category_cooldown_ms > 0 OR power_cost > 0 OR power_cost_pct > 0 OR cast_ms > 0)
+            """;
+        using var r = command.ExecuteReader();
+        while (r.Read()) result.Add(r.GetInt32(0));
         return result;
     }
 
