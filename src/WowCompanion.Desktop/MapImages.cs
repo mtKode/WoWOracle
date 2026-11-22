@@ -10,7 +10,9 @@ namespace WowCompanion.Desktop;
 /// <summary>
 /// Zone map pictures, put together from the game's own map tiles: each tile is a BLP file downloaded from wago.tools
 /// by file id, decoded, and placed in the grid; the finished map is saved as a PNG under
-/// %LOCALAPPDATA%\WowCompanion\maps and reused from disk after that.
+/// %LOCALAPPDATA%\WowCompanion\maps and reused from disk after that. wago.tools limits how fast files may be fetched
+/// (HTTP 429), so each tile is kept on disk as soon as it arrives (maps	iles) and a refused one is asked for again
+/// after the wait the server names: a map that didn't finish needs only its missing tiles next time.
 /// </summary>
 public static class MapImages
 {
@@ -20,7 +22,8 @@ public static class MapImages
     private static string? _folder;
     private static HttpClient? _http;
     private static readonly ConcurrentDictionary<string, Lazy<Task<ImageSource?>>> Loaded = new();
-    private static readonly SemaphoreSlim Downloads = new(4);
+    private static readonly SemaphoreSlim Downloads = new(2);
+    private const int Attempts = 5;
 
     public static void Initialize(string appRoot, HttpClient http)
     {
@@ -93,6 +96,9 @@ public static class MapImages
             var temp = path + ".tmp";
             await using (var file = File.Create(temp)) encoder.Save(file);
             File.Move(temp, path, overwrite: true);
+            // The picture is kept now: its tiles were only for getting there.
+            foreach (var id in map.Tiles.Select(t => t.FileId).Concat(map.Overlays.SelectMany(o => o.Tiles.Select(t => t.FileId))))
+                try { File.Delete(Path.Combine(_folder, "tiles", id + ".blp")); } catch (Exception) { }
             return bitmap;
         }
         catch (Exception)
@@ -125,21 +131,58 @@ public static class MapImages
 
     private static async Task<Blp.Image?> TileAsync(int fileId)
     {
-        await Downloads.WaitAsync();
+        var cached = Path.Combine(_folder!, "tiles", fileId + ".blp");
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30)); // a stuck tile mustn't hold a slot
-            var bytes = await _http!.GetByteArrayAsync(string.Format(FileUrl, fileId), timeout.Token);
-            return Blp.Decode(bytes);
+            if (File.Exists(cached) && Blp.Decode(await File.ReadAllBytesAsync(cached)) is { } kept) return kept;
         }
-        catch (Exception)
+        catch (Exception) { } // unreadable: fetch it again
+
+        for (var attempt = 1; attempt <= Attempts; attempt++)
         {
-            return null;
+            TimeSpan? wait = null;
+            await Downloads.WaitAsync();
+            try
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30)); // a stuck tile mustn't hold a slot
+                using var response = await _http!.GetAsync(string.Format(FileUrl, fileId), timeout.Token);
+                if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
+                {
+                    // Too many requests (or a hiccup): wait as long as the server asks, else 1, 2, 4, 8 s.
+                    wait = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(Math.Pow(2, attempt - 1));
+                }
+                else
+                {
+                    if (!response.IsSuccessStatusCode) return null; // not there: no use asking again
+                    var bytes = await response.Content.ReadAsByteArrayAsync(timeout.Token);
+                    var image = Blp.Decode(bytes);
+                    if (image is not null) Keep(cached, bytes);
+                    return image;
+                }
+            }
+            catch (Exception)
+            {
+                wait = TimeSpan.FromSeconds(Math.Pow(2, attempt - 1)); // offline or timed out
+            }
+            finally
+            {
+                Downloads.Release();
+            }
+            if (attempt < Attempts) await Task.Delay(wait.Value < TimeSpan.FromSeconds(20) ? wait.Value : TimeSpan.FromSeconds(20));
         }
-        finally
+        return null;
+    }
+
+    private static void Keep(string path, byte[] bytes)
+    {
+        try
         {
-            Downloads.Release();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var temp = path + ".tmp";
+            File.WriteAllBytes(temp, bytes);
+            File.Move(temp, path, overwrite: true);
         }
+        catch (Exception) { } // only a cache
     }
 
     private static ImageSource Open(string path)
