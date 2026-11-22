@@ -151,10 +151,17 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   auction price when Auctionator has one, else vendor value as a stand-in, what you
   own counts cheaper, cooldown recipes left out, stack sizes ("makes N each") respected.
 - **Learn skills** (`recipes.min_skill`, `skill_source`): `recipe` = the teaching item's required skill; `starter` =
-  learned with the profession (`SkillLineAbility.AcquireMethod` 1), skill 1; `trainer` = read from a trainer window by
-  the addon; `estimate` = the yellow point. The client has no learn skill for trainer recipes, and against Classic's
-  trainer lists the real one is 49 below to 5 above yellow, so yellow almost never claims "learnable" too early.
-  When nothing is learnable at a skill, the planner falls back to estimated recipes from 20 below yellow, with a note.
+  learned with the profession (`SkillLineAbility.AcquireMethod` 1), skill 1; `trainer` = Classic's trainer lists
+  (`npc_trainer` / `npc_trainer_template` `reqskillvalue`, game data schema 32), overruled by what the addon reads from
+  a trainer window; `estimate` = the yellow point, for recipes no Classic trainer teaches (Forever's own). The client
+  has no learn skill for trainer recipes, and against Classic's lists the real one is 49 below to 5 above yellow, so
+  yellow almost never claims "learnable" too early. When nothing is learnable at a skill, the planner falls back to
+  estimated recipes from 20 below yellow, with a note.
+- **Recipe trainers** (`recipe_trainers`: spell, npc, skill): the trainer's spell is a "teach" spell whose LEARN_SPELL
+  effect (36) names the recipe. Today's client lacks most of those, so the dump's `spell_template` is read for them
+  (only its effect-36 rows are kept). A recipe taught by at most 4 trainers (by name) shows them: "Taught by" on the
+  item page with where they stand, the skill and a profession quest they give (the First Aid doctors and Triage), and
+  "from …" in the recipe lists.
 
 ## The addon and the app
 

@@ -43,6 +43,8 @@ public static class SourceImporter
         CREATE TABLE gather_spawns (node_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL);
         CREATE INDEX gather_spawns_node ON gather_spawns (node_id);
         CREATE INDEX gather_spawns_zone ON gather_spawns (zone);
+        CREATE TABLE recipe_trainers (spell_id INTEGER NOT NULL, npc_id INTEGER NOT NULL, skill INTEGER NOT NULL);
+        CREATE INDEX recipe_trainers_spell ON recipe_trainers (spell_id);
         """;
 
     private static readonly HashSet<string> Wanted =
@@ -50,8 +52,23 @@ public static class SourceImporter
         "creature_template", "creature", "creature_loot_template", "reference_loot_template", "gameobject_template",
         "gameobject", "gameobject_loot_template", "npc_vendor", "npc_vendor_template", "quest_template",
         "creature_questrelation", "gameobject_questrelation", "item_loot_template", "pickpocketing_loot_template",
-        "skinning_loot_template", "fishing_loot_template",
+        "skinning_loot_template", "fishing_loot_template", "npc_trainer", "npc_trainer_template",
+        "spell_template",
     ];
+
+    /// <summary>Big tables of which only some rows matter: spell_template only for its "learn a spell" spells.</summary>
+    private static readonly Dictionary<string, Func<Table, string[], bool>> KeepRow = new()
+    {
+        ["spell_template"] = (t, r) => LearnEffect(t, r) > 0,
+    };
+
+    /// <summary>The spell a Classic spell teaches (effect 36, LEARN_SPELL), or 0.</summary>
+    private static int LearnEffect(Table t, string[] r)
+    {
+        for (var i = 1; i <= 3; i++)
+            if (t.Int(r, $"Effect{i}") == 36 && t.Int(r, $"EffectTriggerSpell{i}") > 0) return t.Int(r, $"EffectTriggerSpell{i}");
+        return 0;
+    }
 
     private sealed class Table
     {
@@ -124,6 +141,9 @@ public static class SourceImporter
 
         // ----- ore and herb nodes: every spot they can spawn (the map's gathering layer) -----
         if (csv is not null && locator is not null) ImportGatherNodes(connection, transaction, objects, T("gameobject"), csv("Lock"), locator);
+
+        // ----- profession trainers: who teaches which recipe, at what skill -----
+        ImportRecipeTrainers(connection, transaction, npcs, npcSpawn, T("npc_trainer"), T("npc_trainer_template"), T("spell_template"));
 
         // ----- quests, with who gives them -----
         var givers = new Dictionary<int, (string Name, string Kind, int Id)>();
@@ -273,6 +293,49 @@ public static class SourceImporter
     /// </summary>
     private static readonly HashSet<int> TestVendors = [17078];
 
+    /// <summary>
+    /// Profession trainers (npc_trainer, and npc_trainer_template through creature_template.TrainerTemplateId): the
+    /// recipe each teaches and the skill it needs (reqskillvalue). The trainer's spell is the "teach" spell, whose
+    /// LEARN_SPELL effect (36) names the recipe: Classic's spell_template has them all (today's client lacks most),
+    /// the client's SpellEffect the rest. Only trainers that stand in the world count. Recipes whose learn skill was
+    /// only estimated take the trainer's (the addon's trainer windows still overrule it).
+    /// </summary>
+    private static void ImportRecipeTrainers(SqliteConnection connection, SqliteTransaction transaction, Table npcs,
+        Dictionary<int, (int Map, double X, double Y)> npcSpawn, Table direct, Table templates, Table spells)
+    {
+        var teaches = new Dictionary<int, int>();
+        foreach (var r in spells.Rows) teaches[spells.Int(r, "Id")] = LearnEffect(spells, r);
+        var rows = new List<(int Npc, int Spell, int Skill)>();
+        foreach (var r in direct.Rows)
+            if (direct.Int(r, "reqskill") > 0) rows.Add((direct.Int(r, "entry"), direct.Int(r, "spell"), direct.Int(r, "reqskillvalue")));
+        var byTemplate = templates.Rows.Where(r => templates.Int(r, "reqskill") > 0)
+            .GroupBy(r => templates.Int(r, "entry")).ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var r in npcs.Rows)
+            if (byTemplate.TryGetValue(npcs.Int(r, "TrainerTemplateId"), out var list))
+                foreach (var t in list) rows.Add((npcs.Int(r, "Entry"), templates.Int(t, "spell"), templates.Int(t, "reqskillvalue")));
+
+        Insert(connection, transaction, "INSERT INTO recipe_trainers (spell_id, npc_id, skill) VALUES ($a, $b, $c)",
+            rows.Where(x => npcSpawn.ContainsKey(x.Npc)).Distinct()
+                .Select(x => new object[] { teaches.GetValueOrDefault(x.Spell, x.Spell), x.Npc, Math.Max(1, x.Skill) }));
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            UPDATE recipe_trainers SET spell_id = (
+                SELECT MIN(e.trigger_spell) FROM spell_effects e
+                WHERE e.spell_id = recipe_trainers.spell_id AND e.effect = 36 AND e.trigger_spell > 0)
+            WHERE spell_id NOT IN (SELECT spell_id FROM recipes)
+              AND EXISTS (SELECT 1 FROM spell_effects e
+                          WHERE e.spell_id = recipe_trainers.spell_id AND e.effect = 36 AND e.trigger_spell > 0);
+            DELETE FROM recipe_trainers WHERE spell_id NOT IN (SELECT spell_id FROM recipes);
+            UPDATE recipes SET
+                min_skill = (SELECT MIN(t.skill) FROM recipe_trainers t WHERE t.spell_id = recipes.spell_id),
+                skill_source = 'trainer'
+            WHERE skill_source = 'estimate' AND spell_id IN (SELECT spell_id FROM recipe_trainers);
+            """;
+        command.ExecuteNonQuery();
+    }
+
     /// <summary>Lock types in the client's Lock table: 2 = a skill lock; its index 2 = Herbalism, 3 = Mining.</summary>
     private const int LockSkill = 2, LockHerbalism = 2, LockMining = 3;
 
@@ -378,7 +441,14 @@ public static class SourceImporter
             if (line.StartsWith("INSERT INTO `", StringComparison.Ordinal))
             {
                 var name = line.Split('`')[1];
-                if (tables.TryGetValue(name, out var table)) ParseValues(line, table.Rows);
+                if (!tables.TryGetValue(name, out var table)) continue;
+                if (KeepRow.TryGetValue(name, out var keep))
+                {
+                    var parsed = new List<string[]>();
+                    ParseValues(line, parsed);
+                    table.Rows.AddRange(parsed.Where(r => keep(table, r)));
+                }
+                else ParseValues(line, table.Rows);
             }
         }
         return tables;

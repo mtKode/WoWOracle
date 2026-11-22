@@ -71,6 +71,12 @@ before launch).
 - [ ] In game, mine or pick a few nodes in a Forever zone (Riverglades), `/oracle sync`: the Chronicle says
       "… ore/herb spots on the map" and the node shows there (a new name lists with skill "?").
 
+## 5g. Recipe trainers (app 1.1.16)
+- [ ] First start rebuilds the game data (schema 32). Heavy Runecloth Bandage: **Taught by** Doctor Gregory Victor
+      (Arathi Highlands) and Doctor Gustaf VanHowzen (Dustwallow Marsh), skill 290, quest Triage; requires 290, no "~".
+- [ ] Professions → First Aid: Runecloth Bandage says "from Doctor Gregory Victor (Arathi Highlands) or …".
+      Alchemy Greater Mana Potion names Rogvar / Kylanna Windwhisper.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

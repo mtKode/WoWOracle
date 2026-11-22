@@ -636,7 +636,8 @@ public static partial class GameDatabaseBuilder
     /// with the profession ("starter") skill 1. Other trainer recipes get their yellow point as an estimate, marked as
     /// such: compared with Classic's trainer lists the real skill is anywhere from 49 below yellow to 5 above, and
     /// yellow is the guess that almost never says "learnable" too early (the planner falls back to earlier when it
-    /// has nothing else). Trainer windows read by the addon replace the estimate with the real number
+    /// has nothing else). Classic's trainer lists (SourceImporter, recipe_trainers) then replace the estimate for
+    /// every recipe a Classic trainer teaches, and trainer windows read by the addon overrule both
     /// (TrainerSkillStore). TrivialSkillLineRankLow is where the recipe turns yellow and TrivialSkillLineRankHigh
     /// where it turns grey; green is halfway.
     /// </summary>

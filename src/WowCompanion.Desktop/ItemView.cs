@@ -235,6 +235,21 @@ public sealed record ItemView(
                 };
             }).ToList();
             sections.Add(new SourceSection("Crafted by", lines));
+
+            // Recipes only a few trainers teach: who and where (the First Aid doctors, engineering specialists ...).
+            var trainers = d.CraftedBy.SelectMany(r => r.Trainers)
+                .GroupBy(t => (t.Name, t.Place)).Select(g => g.First())
+                .Select(t => new SourceLine(t.Name, string.Join(" · ", new[]
+                {
+                    t.Subname.Length > 0 ? $"<{t.Subname}>" : "",
+                    $"teaches it at skill {t.Skill}",
+                    t.Quest.Length > 0 ? $"also gives the quest {t.Quest}" : "",
+                }.Where(s => s.Length > 0)))
+                {
+                    Place = t.Place,
+                    TitleBrush = SourceColors.Profession,
+                }).ToList();
+            if (trainers.Count > 0) sections.Add(new SourceSection("Taught by", trainers));
         }
 
         // Where it comes from (Classic world data). Same name and details twice (several NPC entries) show once.

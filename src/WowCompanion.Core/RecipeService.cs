@@ -49,7 +49,12 @@ public sealed class RecipeService(string databasePath)
                          FROM recipe_reagents rr LEFT JOIN items ri ON ri.id = rr.item_id
                          WHERE rr.spell_id = r.spell_id), ''),
                COALESCE(i.icon_file_id, 0), r.trivial_low, r.trivial_high, r.skill_source = 'estimate',
-               COALESCE((SELECT t.name FROM items t WHERE t.id = r.taught_by), ''),
+               COALESCE((SELECT t.name FROM items t WHERE t.id = r.taught_by),
+                        -- else the trainers, when only a few teach it (the First Aid doctors ...)
+                        (SELECT group_concat(name, ' or ') FROM (
+                             SELECT DISTINCT n.name || COALESCE(' (' || NULLIF(n.zone, '') || ')', '') AS name
+                             FROM recipe_trainers rt JOIN npcs n ON n.id = rt.npc_id WHERE rt.spell_id = r.spell_id)
+                         HAVING COUNT(*) BETWEEN 1 AND 4), ''),
                COALESCE(i.stats, ''), COALESCE(i.armor, 0), COALESCE(i.dmg_min, 0), COALESCE(i.dmg_max, 0),
                COALESCE(i.delay_ms, 0), COALESCE(i.inventory_type, 0), COALESCE(i.class_id, 0), COALESCE(i.subclass_id, 0),
                COALESCE(i.item_level, 0), COALESCE(i.required_level, 0),

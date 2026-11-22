@@ -19,7 +19,12 @@ public sealed record RecipeInfo(int SpellId, string Name, string Profession, int
     public int GreyAt { get; init; }
     public bool SkillEstimated { get; init; }
     public string TaughtBy { get; init; } = "";
+    /// <summary>The trainers who teach it, when only a few do (special trainers such as the First Aid doctors).</summary>
+    public IReadOnlyList<RecipeTrainer> Trainers { get; init; } = [];
 }
+
+/// <summary>A trainer who teaches a recipe (Classic data): where they stand, the skill needed, and a profession quest they give.</summary>
+public sealed record RecipeTrainer(string Name, string Subname, string Place, int Skill, string Quest);
 public sealed record ReagentUse(string RecipeName, string Profession, int MinSkill, int Quality = 1);
 
 public sealed record ItemDetail(
@@ -387,12 +392,12 @@ public sealed class ItemSearchService(string databasePath)
 
     private static List<RecipeInfo> ReadCraftedBy(SqliteConnection connection, int itemId)
     {
-        var recipes = new List<(int Spell, string Name, string Profession, int MinSkill, int Yellow, int Grey, bool Estimated, string TaughtBy)>();
+        var recipes = new List<(int Spell, string Name, string Profession, int MinSkill, int Yellow, int Grey, bool Estimated, string TaughtBy, int SkillLine)>();
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
                 SELECT r.spell_id, r.name, r.profession, r.min_skill, r.trivial_low, r.trivial_high,
-                       r.skill_source = 'estimate', COALESCE(t.name, '')
+                       r.skill_source = 'estimate', COALESCE(t.name, ''), r.skill_line_id
                 FROM recipes r LEFT JOIN items t ON t.id = r.taught_by
                 WHERE r.created_item_id = $id ORDER BY r.min_skill, r.profession
                 """;
@@ -400,11 +405,11 @@ public sealed class ItemSearchService(string databasePath)
             using var reader = command.ExecuteReader();
             while (reader.Read())
                 recipes.Add((reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3),
-                    reader.GetInt32(4), reader.GetInt32(5), reader.GetBoolean(6), reader.GetString(7)));
+                    reader.GetInt32(4), reader.GetInt32(5), reader.GetBoolean(6), reader.GetString(7), reader.GetInt32(8)));
         }
 
         var result = new List<RecipeInfo>();
-        foreach (var (spell, name, profession, minSkill, yellow, grey, estimated, taughtBy) in recipes)
+        foreach (var (spell, name, profession, minSkill, yellow, grey, estimated, taughtBy, skillLine) in recipes)
         {
             var reagents = new List<RecipeReagent>();
             using var command = connection.CreateCommand();
@@ -423,9 +428,39 @@ public sealed class ItemSearchService(string databasePath)
                 GreyAt = grey,
                 SkillEstimated = estimated,
                 TaughtBy = taughtBy,
+                Trainers = ReadSpecialTrainers(connection, spell, skillLine),
             });
         }
         return result;
+    }
+
+    /// <summary>Trainers of a recipe taught by only a few (every First Aid trainer teaching Linen Bandage isn't news).</summary>
+    public const int SpecialTrainerLimit = 4;
+
+    private static List<RecipeTrainer> ReadSpecialTrainers(SqliteConnection connection, int spell, int skillLine)
+    {
+        var result = new List<RecipeTrainer>();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT n.name, n.subname, n.zone, n.zone_x, n.zone_y, COALESCE(m.name, ''), MIN(t.skill),
+                   COALESCE((SELECT q.title FROM quests q WHERE q.giver_kind = 'npc' AND q.giver_id = n.id AND q.skill = $line
+                             ORDER BY q.level LIMIT 1), '')
+            FROM recipe_trainers t JOIN npcs n ON n.id = t.npc_id LEFT JOIN maps m ON m.id = n.map
+            WHERE t.spell_id = $spell
+            GROUP BY n.id ORDER BY n.name
+            """;
+        command.Parameters.AddWithValue("$spell", spell);
+        command.Parameters.AddWithValue("$line", skillLine);
+        try
+        {
+            using var r = command.ExecuteReader();
+            while (r.Read())
+                result.Add(new RecipeTrainer(r.GetString(0), r.GetString(1),
+                    Location(r.GetString(2), r.GetDouble(3), r.GetDouble(4), r.GetString(5)), r.GetInt32(6), r.GetString(7)));
+        }
+        catch (SqliteException) { return []; } // older game database without recipe_trainers
+        // The same trainer can have several entries (one per faction or phase): count names.
+        return result.Select(t => t.Name).Distinct().Count() <= SpecialTrainerLimit ? result : [];
     }
 
     private static List<ReagentUse> ReadUsedIn(SqliteConnection connection, int itemId)
