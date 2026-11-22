@@ -131,6 +131,12 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   from their world position, which win over a patch centre; NPCs from `npcs`. A subzone without a spot borrows one
   from an NPC named after it ("Bandarion Keep Paladin"), or from the addon's `!WOWORACLE-PLACE` samples; otherwise
   it opens the whole zone.
+- **Ore & herbs** (`gather_nodes`, `gather_spawns`, game data schema 30; `GatherService`, Map page): gameobjects of
+  type 3 whose lock (`data0`) is a skill lock in the client's `Lock` table (`Type_n = 2`, `Index_n` 3 Mining / 2
+  Herbalism, `Skill_n` the skill needed), and every Classic spawn of them in zone coordinates. Rare veins (Silver,
+  Gold, Truesilver) share pools with the common ore, so the dump lists them on those spots: the guide marks them
+  "rare". Quest plants (skill 0) stay out of the guide. The guide's gold row is the best common node your Mining /
+  Herbalism (addon character data) can gather.
 - **Forever's own zones and dungeons**: the Classic world data (CMaNGOS) has nothing for them. Classic spawns are placed
   with `ZoneLocator(classicOnly)`, which leaves out Forever's zone maps (UiMap 2000+): their rectangles overlap the
   old zones (Riverglades over the Burning Steppes). Dungeons from map 2900 on are listed from `DungeonEncounter`
@@ -166,6 +172,7 @@ Everything the addon saves is a text block: a marker line, `key=value` lines, `!
 | `!WOWORACLE-CHAR 1` | Profession ranks, known recipes, bag and bank counts | Crafting planner |
 | `!WOWORACLE-TALENTS 1` | The live talent tree: `node=id;x;y;maxRanks;spell;icon;unlocks;name;description` | Used only when the client build is newer than the wago.tools data |
 | `!WOWORACLE-PLACE 1` | Where you were in a subzone, averaged: `place=zone;subzone;x;y;samples` (sampled every 8 s, up to 60) | `seen_places` (user.sqlite) → `map_places`, only subzones without a spot, from 5 samples on |
+| `!WOWORACLE-NODE 1` | An ore or herb node you gathered: `node=mining\|herbalism;name;zone;x;y` (the Mining / Herb Gathering cast's target, your spot when it succeeds; one per spot rounded to 1 map unit, up to 3000) | `seen_nodes` (user.sqlite) → `gather_spawns`, skipping spots the data has within 1 unit; a name the data lacks gets its own `gather_nodes` row (negative id, skill -1) |
 | `!WOWORACLE-TRAINER 1` | One per profession, all trainers merged: `profession=`, `recipe=skill;itemId;level;name` (the trainer window's skill requirement) | `trainer_skills` (user.sqlite) → `recipes.min_skill`, `skill_source = 'trainer'` |
 | `!WOWORACLE-BASE 1` | Base stats per class/race/level: `base=class;race;level;str;agi;sta;int;spi` (paper-doll stat minus gear and buffs), `vitals=health;mana;naked` | `base_stats` (user.sqlite) → Calculator naked stats (exact level, else interpolated) |
 | `!WOWORACLE-QUEST 1` | Quests the data lacks: giver, where, rewards, `itemdata=` | `learned_quests` → game database |

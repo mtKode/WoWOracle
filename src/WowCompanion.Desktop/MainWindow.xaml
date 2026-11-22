@@ -474,6 +474,35 @@
             </Setter>
         </Style>
 
+        <!-- Two or more choices side by side (Map: Zones / Ore & herbs, Mining / Herbalism) -->
+        <Style x:Key="TabRadio" TargetType="RadioButton">
+            <Setter Property="FontFamily" Value="{DynamicResource Serif}" />
+            <Setter Property="Foreground" Value="{StaticResource Dim}" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Frame" Padding="{TemplateBinding Padding}" Background="Transparent"
+                                BorderBrush="{StaticResource Edge}" BorderThickness="1" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" TextElement.FontSize="12"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Parchment}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Gold}" />
+                                <Setter TargetName="Frame" Property="Background" Value="{StaticResource Hover}" />
+                                <Setter Property="Foreground" Value="{StaticResource Gold}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="PinToggle" TargetType="ToggleButton">
             <Setter Property="FontFamily" Value="{DynamicResource Serif}" />
             <Setter Property="Foreground" Value="{StaticResource Dim}" />
@@ -2751,17 +2780,26 @@
                 <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="1" CornerRadius="3">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Margin="10,10,10,6">
-                            <TextBlock Text="Map" FontSize="16" Foreground="{StaticResource Gold}" />
+                            <DockPanel>
+                                <TextBlock Text="Map" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Zones"
+                                                 IsChecked="{Binding ShowZonePanel}" ToolTip="The zone maps" />
+                                    <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Ore &amp; herbs" Margin="4,0,0,0"
+                                                 IsChecked="{Binding ShowGatherPanel}"
+                                                 ToolTip="Mining and Herbalism: what to gather at your skill, and every spot where it spawns" />
+                                </StackPanel>
+                            </DockPanel>
                             <TextBox Style="{StaticResource FilterTextBox}" Margin="0,8,0,0"
                                      Text="{Binding MapSearchText, UpdateSourceTrigger=PropertyChanged}"
                                      local:ListKeys.Target="{Binding ElementName=MapHitList}"
-                                     ToolTip="Find a zone, subzone, town, flight master or NPC. ↑ ↓ or Tab move, Enter opens.">
+                                     ToolTip="Find a zone, subzone, town, flight master, NPC, ore or herb. ↑ ↓ or Tab move, Enter opens.">
                                 <TextBox.InputBindings>
                                     <KeyBinding Key="Enter" Command="{Binding PickMapHitCommand}" />
                                     <KeyBinding Key="Escape" Command="{Binding ClearMapSearchCommand}" />
                                 </TextBox.InputBindings>
                             </TextBox>
-                            <TextBlock Text="Find a zone, place or NPC · ↑ ↓ Tab, Enter" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,2,0,0" />
+                            <TextBlock Text="Find a zone, place, NPC, ore or herb · ↑ ↓ Tab, Enter" FontSize="11" Foreground="{StaticResource Dim}" Margin="2,2,0,0" />
                             <CheckBox IsChecked="{Binding ShowTalePins}" Margin="0,8,0,0" Foreground="{StaticResource Parchment}" FontSize="12"
                                       Content="Mark where the tales begin" ToolTip="The Journal's tales of the zone, marked with a gold !" />
                         </StackPanel>
@@ -2784,8 +2822,74 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
+                        <!-- Ore & herbs: the guide for Mining or Herbalism, and where the picked node spawns -->
+                        <DockPanel Margin="10,0,10,8" Visibility="{Binding ShowGatherList, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DockPanel.Dock="Top">
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
+                                    <RadioButton Style="{StaticResource TabRadio}" GroupName="GatherKind" Content="Mining" IsChecked="{Binding GatherMining}" />
+                                    <RadioButton Style="{StaticResource TabRadio}" GroupName="GatherKind" Content="Herbalism" Margin="4,0,0,0"
+                                                 IsChecked="{Binding GatherHerbs}" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding GatherYou}" FontSize="12" Foreground="{StaticResource Gold}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            </StackPanel>
+                            <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                <StackPanel Visibility="{Binding HasGatherNode, Converter={StaticResource BoolToVis}}">
+                                    <Border Height="1" Background="{StaticResource Divider}" Margin="0,0,0,6" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource PillButton}" Padding="8,1" Content="Clear"
+                                                Command="{Binding ClearGatherNodeCommand}" ToolTip="Take the dots off the map" />
+                                        <TextBlock Text="{Binding GatherNode.Name, StringFormat=Where: {0}}" FontSize="13" Foreground="{StaticResource Gold}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <ListBox ItemsSource="{Binding GatherZones}" SelectedItem="{Binding SelectedGatherZone}" MaxHeight="170" Margin="0,4,0,0"
+                                             ItemContainerStyle="{StaticResource RecipeItem}" Background="Transparent" BorderThickness="0" Padding="0"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" ToolTip="Open the zone with its spots marked">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,0,10,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Spots}" FontSize="12" Foreground="{StaticResource Dim}" />
+                                                    <TextBlock Text="{Binding Zone}" FontSize="13" Foreground="{StaticResource Parchment}" TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                                <TextBlock Text="{Binding GatherNote}" FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
+                            <ListBox ItemsSource="{Binding GatherSteps}" SelectedItem="{Binding SelectedGatherStep}"
+                                     ItemContainerStyle="{StaticResource RecipeItem}" Background="Transparent" BorderThickness="0" Padding="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,1,8,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding SkillText}" FontSize="13" Foreground="{StaticResource Dim}" Margin="0,1,0,0" />
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Name}" FontSize="14" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource Parchment}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsYours}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Gold}" />
+                                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
                         <ListBox ItemsSource="{Binding Source={StaticResource MapsByContinent}}" SelectedItem="{Binding SelectedMapZone}"
-                                 Visibility="{Binding IsNotMapSearching, Converter={StaticResource BoolToVis}}"
+                                 Visibility="{Binding ShowZoneList, Converter={StaticResource BoolToVis}}"
                                  ItemContainerStyle="{StaticResource RecipeItem}" Background="Transparent" BorderThickness="0" Padding="0"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.GroupStyle>
@@ -2838,6 +2942,11 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Canvas ToolTip="{Binding Tip}">
+                                                <!-- Ore / herb spot: a small copper or green dot -->
+                                                <Ellipse Canvas.Left="-5" Canvas.Top="-5" Width="10" Height="10" Fill="#E8A04A" Stroke="#2A1204" StrokeThickness="1.5"
+                                                         Visibility="{Binding IsOre, Converter={StaticResource BoolToVis}}" />
+                                                <Ellipse Canvas.Left="-5" Canvas.Top="-5" Width="10" Height="10" Fill="#86DB6E" Stroke="#0E2606" StrokeThickness="1.5"
+                                                         Visibility="{Binding IsHerb, Converter={StaticResource BoolToVis}}" />
                                                 <!-- A tale begins here: the gold "!" of a quest giver -->
                                                 <Grid Canvas.Left="-9" Canvas.Top="-30" Width="18" Height="32" Background="Transparent"
                                                       Visibility="{Binding IsTale, Converter={StaticResource BoolToVis}}">

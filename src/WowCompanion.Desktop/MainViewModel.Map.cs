@@ -6,11 +6,16 @@ using WowCompanion.Core;
 
 namespace WowCompanion.Desktop;
 
-/// <summary>A marker on the map, in picture pixels. Kind: "focus" (what you asked to see) or "tale" (a tale's start).</summary>
+/// <summary>
+/// A marker on the map, in picture pixels. Kind: "focus" (what you asked to see), "tale" (a tale's start), or
+/// "mining" / "herbalism" (a spot where the picked ore or herb can spawn).
+/// </summary>
 public sealed record MapPin(double Left, double Top, string Label, string Kind, string Tip)
 {
     public bool IsFocus => Kind == "focus";
     public bool IsTale => Kind == "tale";
+    public bool IsOre => Kind == "mining";
+    public bool IsHerb => Kind == "herbalism";
 }
 
 /// <summary>
@@ -45,6 +50,7 @@ public partial class MainViewModel
     private void UseMaps(string gameDbPath)
     {
         _maps = new MapService(gameDbPath);
+        UseGather(gameDbPath);
         var previous = SelectedMapZone?.UiMapId;
         MapZones.Clear();
         // Continents come twice in Forever's data (a second, plain picture); keep the first one, with the zone lines.
@@ -85,6 +91,11 @@ public partial class MainViewModel
             if (run != _mapRun) return;
             MapImage = image;
             MapStatus = image is null ? "Couldn't get this map's picture (offline?). Markers still show where things are." : "";
+
+            // Ore or herb spots (Ore & herbs), under the other markers.
+            var nodes = await GatherPinsAsync(map);
+            if (run != _mapRun) return;
+            foreach (var pin in nodes) MapPins.Add(pin);
 
             // Tales that begin here, if the Journal knows the zone.
             if (ShowTalePins && _journal is { } journal && map.Type == 3)
@@ -166,7 +177,7 @@ public partial class MainViewModel
     public ObservableCollection<MapSearchHit> MapHits { get; } = [];
     private CancellationTokenSource? _mapSearchCts;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMapSearching), nameof(IsNotMapSearching))] private string _mapSearchText = "";
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMapSearching), nameof(IsNotMapSearching), nameof(ShowZoneList), nameof(ShowGatherList))] private string _mapSearchText = "";
     [ObservableProperty] private MapSearchHit? _selectedMapHit;
 
     /// <summary>While there's search text the results replace the zone list.</summary>
@@ -204,7 +215,8 @@ public partial class MainViewModel
     private void GoToMapHit(MapSearchHit? hit)
     {
         if (hit is null) return;
-        if (hit.HasSpot) ViewOnMap(new MapSpot(hit.Zone, hit.X, hit.Y, hit.Kind == "zone" ? "" : hit.Name));
+        if (hit.Kind is "mining" or "herbalism") ShowGatherNodeByName(hit.Name);
+        else if (hit.HasSpot) ViewOnMap(new MapSpot(hit.Zone, hit.X, hit.Y, hit.Kind == "zone" ? "" : hit.Name));
         else OpenZoneMap(hit.Zone);
     }
 

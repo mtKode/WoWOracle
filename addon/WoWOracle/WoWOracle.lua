@@ -1590,6 +1590,55 @@ local function notePlace()
 end
 
 -- ------------------------------------------------------------------------------------------------
+-- Ore and herb nodes you gather: the node's name (the cast's target) and your spot on the zone map, so the app's map
+-- learns where nodes grow in zones its Classic data doesn't have (WoW Forever's own). One entry per node and spot
+-- (rounded to 1 map unit) in WoWOracleDB.nodes, at most NODE_MAX of them.
+-- ------------------------------------------------------------------------------------------------
+
+local NODE_MAX = 3000
+local gatherCasts = {} -- castGUID -> { kind, name }
+
+-- Mining / Herb Gathering (every rank of the Classic spells; other clients by name).
+local GATHER_SPELLS = { [2575] = "mining", [2576] = "mining", [3564] = "mining", [10248] = "mining",
+                        [2366] = "herbalism", [2368] = "herbalism", [3570] = "herbalism", [11993] = "herbalism" }
+
+local function gatherKind(spellID)
+    if GATHER_SPELLS[spellID] then return GATHER_SPELLS[spellID] end
+    local name = spellID and ((C_Spell and C_Spell.GetSpellName and try(C_Spell.GetSpellName, spellID))
+        or (GetSpellInfo and try(GetSpellInfo, spellID)))
+    if not name then return nil end
+    if name == "Mining" then return "mining" end
+    if name == "Herb Gathering" or name == "Herbalism" then return "herbalism" end
+    return nil
+end
+
+-- UNIT_SPELLCAST_SENT: unit, target (the node's name), castGUID, spellID.
+local function onCastSent(unit, target, castGUID, spellID)
+    if unit ~= "player" or not castGUID or not target or target == "" then return end
+    local kind = gatherKind(spellID)
+    if kind then gatherCasts[castGUID] = { kind = kind, name = target } end
+end
+
+-- UNIT_SPELLCAST_SUCCEEDED: unit, castGUID, spellID. You stand next to the node: your spot is its spot.
+local function onCastSucceeded(unit, castGUID)
+    if unit ~= "player" or not castGUID then return end
+    local cast = gatherCasts[castGUID]
+    if not cast then return end
+    gatherCasts[castGUID] = nil
+    local zoneName, x, y = playerPlace()
+    if zoneName == "" or (x or 0) <= 0 or (y or 0) <= 0 then return end
+    WoWOracleDB = WoWOracleDB or {}
+    WoWOracleDB.nodes = WoWOracleDB.nodes or {}
+    local key = ("%s:%s:%s:%d:%d"):format(cast.kind, cast.name, zoneName, math.floor(x + 0.5), math.floor(y + 0.5))
+    if WoWOracleDB.nodes[key] then return end
+    local n = 0
+    for _ in pairs(WoWOracleDB.nodes) do n = n + 1 end
+    if n >= NODE_MAX then return end
+    WoWOracleDB.nodes[key] = ("!WOWORACLE-NODE 1\nnode=%s;%s;%s;%.1f;%.1f\n!END"):format(
+        cast.kind, clean(cast.name), clean(zoneName), x, y)
+end
+
+-- ------------------------------------------------------------------------------------------------
 -- Startup
 -- ------------------------------------------------------------------------------------------------
 
@@ -1604,10 +1653,11 @@ for _, e in ipairs({ "SKILL_LINES_CHANGED", "TRADE_SKILL_SHOW", "TRADE_SKILL_UPD
                      "CRAFT_UPDATE", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED", "PLAYERBANKSLOTS_CHANGED",
                      "PLAYER_EQUIPMENT_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED",
                      "PLAYER_LEVEL_UP", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "MERCHANT_SHOW", "LOOT_READY",
-                     "LOOT_OPENED", "TRAINER_SHOW", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA" }) do
+                     "LOOT_OPENED", "TRAINER_SHOW", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA",
+                     "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED" }) do
     pcall(events.RegisterEvent, events, e) -- some don't exist on every client
 end
-events:SetScript("OnEvent", function(_, event, name, extra)
+events:SetScript("OnEvent", function(_, event, name, extra, ...)
     if event == "ADDON_LOADED" then
         if name == ADDON then
             WoWOracleDB = WoWOracleDB or {}
@@ -1656,6 +1706,10 @@ events:SetScript("OnEvent", function(_, event, name, extra)
         onMerchantShow()
     elseif event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED_NEW_AREA" then
         C_Timer.After(1, function() pcall(notePlace) end) -- the map position settles a moment after
+    elseif event == "UNIT_SPELLCAST_SENT" then
+        pcall(onCastSent, name, extra, ...)
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        pcall(onCastSucceeded, name, extra)
     elseif event == "TRAINER_SHOW" then
         C_Timer.After(0.3, function() pcall(readTrainer) end) -- the list fills right after the window opens
     elseif event == "LOOT_READY" or event == "LOOT_OPENED" then

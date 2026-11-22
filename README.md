@@ -57,6 +57,7 @@ updates). In game, `/reload` or restart, and tick *WoW Oracle* in the AddOns lis
 | **Base stats per class, race and level** | Your naked base stats (Str, Agi, Sta, Int, Spi without gear or buffs) at every level you reach, for every character. The Calculator uses them instead of its estimate (in between recorded levels it fills the gap). Take everything off once to also record base health and mana. **Copy recorded** in the Calculator gives the whole table as CSV. |
 | **Professions, recipes, bags and bank** | Feed the profession planner: your skill, the recipes you know and the materials you have. Open each profession window and the bank once. |
 | **Where subzones are** | While you're in a subzone, your spot is noted every few seconds and averaged, so the map search can place subzones the game data has no spot for (new Forever places like Bandarion Keep). |
+| **Ore and herbs you gather** | The node's name and where you stood, so the map's **Ore & herbs** layer learns the spots in zones its Classic data doesn't have (Forever's own). |
 | **Trainer skills** | The skill each profession trainer teaches a recipe at, read whenever you open a trainer. The game data doesn't have it, so until then the app assumes a recipe's yellow skill (shown with **~**). |
 | **New quests, NPCs, vendors, loot and items** | Things the app's data doesn't have yet (new Forever zones, quests and recipes) are recorded once and added to the app: quest givers and rewards, NPCs on the map, what vendors sell, what mobs drop with a drop chance from your own kills, and the names and stats of new items you carry, craft, loot or see at a vendor. Things the app already knows are not recorded. |
 
@@ -181,7 +182,13 @@ zone that would beat what your gear set wears.
 ### Map (Ctrl+M)
 The game's own zone maps, fully explored. Scroll to zoom, drag to move, coordinates under the mouse like in game.
 **View on map** buttons all over the app open the right zone with a marker. The search box above the zone list
-finds zones, subzones (Freewind Post, The Shimmering Flats), towns, flight masters and NPCs, and marks the spot.
+finds zones, subzones (Freewind Post, The Shimmering Flats), towns, flight masters, NPCs, ores and herbs, and marks the spot.
+
+**Ore & herbs** (next to *Zones*) is a Mining and Herbalism guide: every ore or herb with the skill it needs and
+the zones with the most of it, your current one in gold. Pick one and the map shows a dot on every spot where it can
+spawn; the list under it opens the other zones that have it. Rare veins (Silver, Gold, Truesilver) spawn now and
+then on the common ore's spots, so their dots say where to look. Forever's own zones fill in as you gather there
+with the addon on.
 
 ### Oracle's Chronicle
 The scroll at the bottom left: everything that changed this session (new game data, what the addon brought in)

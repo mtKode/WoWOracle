@@ -39,6 +39,10 @@ public static class SourceImporter
         CREATE INDEX item_sources_item ON item_sources (item_id);
         CREATE INDEX item_sources_ref ON item_sources (kind, ref_id);
         CREATE INDEX npcs_map ON npcs (map);
+        CREATE TABLE gather_nodes (id INTEGER PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, skill INTEGER NOT NULL);
+        CREATE TABLE gather_spawns (node_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL);
+        CREATE INDEX gather_spawns_node ON gather_spawns (node_id);
+        CREATE INDEX gather_spawns_zone ON gather_spawns (zone);
         """;
 
     private static readonly HashSet<string> Wanted =
@@ -117,6 +121,9 @@ public static class SourceImporter
                 var (zone, zx, zy) = locator is null ? ("", 0.0, 0.0) : locator.Locate(map, sx, sy);
                 return new object[] { id, objects.Get(r, "name"), objects.Int(r, "type"), map, zone, zx, zy };
             }));
+
+        // ----- ore and herb nodes: every spot they can spawn (the map's gathering layer) -----
+        if (csv is not null && locator is not null) ImportGatherNodes(connection, transaction, objects, T("gameobject"), csv("Lock"), locator);
 
         // ----- quests, with who gives them -----
         var givers = new Dictionary<int, (string Name, string Kind, int Id)>();
@@ -256,6 +263,54 @@ public static class SourceImporter
             sources.GroupBy(s => ((int)s[0], (string)s[1], (int)s[2]))
                 .Select(g => g.OrderByDescending(s => (double)s[3]).First()));
         return sources.Count;
+    }
+
+    /// <summary>Lock types in the client's Lock table: 2 = a skill lock; its index 2 = Herbalism, 3 = Mining.</summary>
+    private const int LockSkill = 2, LockHerbalism = 2, LockMining = 3;
+
+    /// <summary>
+    /// Ore veins and herbs: gameobjects (chests, type 3) whose lock (data0) asks for Mining or Herbalism, with the skill
+    /// they need, and every spawn of them in zone coordinates. Spots can be shared by several node types (a pool
+    /// spawns one of them), so a spot is listed for each.
+    /// </summary>
+    private static void ImportGatherNodes(SqliteConnection connection, SqliteTransaction transaction, Table objects, Table spawns,
+        string lockPath, ZoneLocator locator)
+    {
+        if (!File.Exists(lockPath)) return;
+        var locks = new Dictionary<int, (string Kind, int Skill)>();
+        foreach (var r in CsvTable.Read(lockPath))
+        {
+            for (var i = 0; i < 8; i++)
+            {
+                if (r.GetInt($"Type_{i}") != LockSkill) continue;
+                var index = r.Has($"_Index_{i}") ? r.GetInt($"_Index_{i}") : r.GetInt($"Index_{i}");
+                var kind = index switch { LockMining => "mining", LockHerbalism => "herbalism", _ => null };
+                if (kind is null) continue;
+                locks[r.GetInt("ID")] = (kind, r.GetInt($"Skill_{i}"));
+                break;
+            }
+        }
+
+        var nodes = new Dictionary<int, (string Name, string Kind, int Skill)>();
+        foreach (var r in objects.Rows)
+        {
+            if (objects.Int(r, "type") != 3 || !locks.TryGetValue(objects.Int(r, "data0"), out var lockInfo)) continue;
+            var name = objects.Get(r, "name").Trim();
+            if (name.Length > 0) nodes[objects.Int(r, "entry")] = (name, lockInfo.Kind, lockInfo.Skill);
+        }
+        Insert(connection, transaction, "INSERT OR REPLACE INTO gather_nodes (id, name, kind, skill) VALUES ($a, $b, $c, $d)",
+            nodes.Select(n => new object[] { n.Key, n.Value.Name, n.Value.Kind, n.Value.Skill }));
+
+        Insert(connection, transaction, "INSERT INTO gather_spawns (node_id, zone, x, y) VALUES ($a, $b, $c, $d)",
+            spawns.Rows
+                .Where(r => nodes.ContainsKey(spawns.Int(r, "id")))
+                .Select(r =>
+                {
+                    var (zone, x, y) = locator.Locate(spawns.Int(r, "map"), spawns.Real(r, "position_x"), spawns.Real(r, "position_y"));
+                    return (Id: spawns.Int(r, "id"), Zone: zone, X: x, Y: y);
+                })
+                .Where(s => s.Zone.Length > 0 && s.X > 0 && s.Y > 0)
+                .Select(s => new object[] { s.Id, s.Zone, Math.Round(s.X, 1), Math.Round(s.Y, 1) }));
     }
 
     /// <summary>Where each creature/object mostly stands: its most common map, and the first spawn there.</summary>

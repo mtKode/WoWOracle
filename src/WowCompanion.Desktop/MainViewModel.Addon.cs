@@ -9,7 +9,8 @@ namespace WowCompanion.Desktop;
 /// - talent trees: a class's tree replaces the downloaded one only when the game client's build is newer;
 /// - sightings: new NPCs, vendors and loot (MainViewModel.Seen.cs);
 /// - trainer windows: the skill each recipe is taught at, which the game data lacks;
-/// - subzone spots: where you were in subzones the game data can't place (map search).
+/// - subzone spots: where you were in subzones the game data can't place (map search);
+/// - ore and herb nodes you gathered: spots for the map's Ore &amp; herbs layer (WoW Forever's own zones).
 /// wago.tools and the CMaNGOS data stay the master; the addon only fills gaps.
 /// </summary>
 public partial class MainViewModel
@@ -128,6 +129,9 @@ public partial class MainViewModel
 
         /// <summary>Subzones that got a spot on the map from where you've been.</summary>
         public int PlacedSubzones { get; init; }
+
+        /// <summary>Ore and herb spots added to the map from nodes you gathered.</summary>
+        public int GatherSpots { get; init; }
     }
 
     private readonly BaseStatsStore _baseStats = new(paths.UserDbPath);
@@ -149,6 +153,23 @@ public partial class MainViewModel
 
     private readonly TrainerSkillStore _trainerSkills = new(paths.UserDbPath);
     private readonly PlaceSightingStore _placeSightings = new(paths.UserDbPath);
+    private readonly NodeSightingStore _nodeSightings = new(paths.UserDbPath);
+
+    /// <summary>"!WOWORACLE-NODE 1" blocks into user.sqlite, then into the game data's ore and herb spots.</summary>
+    private int ApplyNodeSightings(string gameDbPath, IEnumerable<string> addonTexts)
+    {
+        try
+        {
+            var read = addonTexts.SelectMany(t => AddonSavedData.Blocks(t, NodeSighting.Marker))
+                .Select(NodeSighting.Parse).OfType<NodeSighting>().ToList();
+            if (read.Count > 0) _nodeSightings.Save(read);
+            return NodeSightingStore.ApplyTo(gameDbPath, _nodeSightings.All());
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
 
     /// <summary>"!WOWORACLE-PLACE 1" blocks into user.sqlite, then into the game data's map places (gaps only).</summary>
     private int ApplyPlaceSightings(string gameDbPath, IEnumerable<string> addonTexts)
@@ -211,6 +232,7 @@ public partial class MainViewModel
         var sightings = InjectSightings(gameDbPath); // new NPCs, vendors, loot
         var trainerRecipes = ApplyTrainerSkills(gameDbPath, texts);
         var placedSubzones = ApplyPlaceSightings(gameDbPath, texts);
+        var gatherSpots = ApplyNodeSightings(gameDbPath, texts);
         (List<string> Classes, int Build) talentTrees = talents ? ApplyAddonTalents(gameDbPath, version, texts) : (new List<string>(), 0);
         // After the gaps are filled, so the addon doesn't record them again; only rebuilt when something changed.
         var changed = items > 0 || quests.Added.Count + quests.Updated.Count > 0 || sightings.Any;
@@ -220,6 +242,7 @@ public partial class MainViewModel
             NewBaseStats = newBase,
             TrainerRecipes = trainerRecipes,
             PlacedSubzones = placedSubzones,
+            GatherSpots = gatherSpots,
         };
     }
 
@@ -253,6 +276,11 @@ public partial class MainViewModel
         if (r.Items > 0) parts.Add(Plural(r.Items, "item"));
         parts.AddRange(SightingParts(r.Sightings));
         if (r.PlacedSubzones > 0) parts.Add($"{Plural(r.PlacedSubzones, "subzone")} on the map");
+        if (r.GatherSpots > 0)
+        {
+            parts.Add($"{Plural(r.GatherSpots, "ore/herb spot")} on the map");
+            if (_gameDbPath.Length > 0) UseGather(_gameDbPath); // the guide and the dots read the new spots
+        }
         if (r.TrainerRecipes > 0) parts.Add(Plural(r.TrainerRecipes, "trainer skill"));
         if (r.NewBaseStats > 0) parts.Add(Plural(r.NewBaseStats, "base-stat level"));
         if (r.TalentClasses.Count > 0) parts.Add($"{string.Join(", ", r.TalentClasses.Order())} talents (build {r.ClientBuild})");

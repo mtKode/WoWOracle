@@ -148,6 +148,17 @@ public static class UserDatabase
             PRIMARY KEY (zone, name)
         );
         """,
+        """
+        CREATE TABLE seen_nodes (
+            kind TEXT NOT NULL,
+            name TEXT NOT NULL,
+            zone TEXT NOT NULL,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            updated_utc TEXT NOT NULL,
+            PRIMARY KEY (kind, name, zone, x, y)
+        );
+        """,
     ];
 
     public static void Initialize(string path)

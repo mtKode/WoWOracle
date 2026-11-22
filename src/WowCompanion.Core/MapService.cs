@@ -220,7 +220,13 @@ public sealed class MapService(string databasePath)
         }
         catch (SqliteException) { }
 
-        static int Rank(string kind) => kind switch { "zone" => 0, "subzone" => 1, "place" or "flight" => 2, _ => 3 };
+        // Ore and herbs (game data schema 30): every spot of it, opened in the zone with the most.
+        var gather = new GatherService(databasePath);
+        foreach (var node in gather.Search(text))
+            if (gather.Zones(node.Name, 10).FirstOrDefault(z => zones.Contains(z.Zone)) is { } best)
+                hits.Add(new MapSearchHit(node.Name, node.Kind, best.Zone, -1, -1, node.SkillText));
+
+        static int Rank(string kind) => kind switch { "zone" => 0, "subzone" or "mining" or "herbalism" => 1, "place" or "flight" => 2, _ => 3 };
         return hits
             .OrderBy(h => h.Name.StartsWith(text, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(h => Rank(h.Kind)).ThenBy(h => h.Name).ThenBy(h => h.Zone)
@@ -229,7 +235,7 @@ public sealed class MapService(string databasePath)
 }
 
 /// <summary>One answer of the map search. X and Y are map coordinates (0-100), -1 when only the zone is known.</summary>
-/// <param name="Kind">zone, subzone, place (town, landmark), flight (flight master) or npc.</param>
+/// <param name="Kind">zone, subzone, place (town, landmark), flight (flight master), npc, or mining / herbalism (a node).</param>
 public sealed record MapSearchHit(string Name, string Kind, string Zone, double X, double Y, string Detail)
 {
     public bool HasSpot => X >= 0 && Y >= 0;
@@ -248,6 +254,7 @@ public sealed record MapSearchHit(string Name, string Kind, string Zone, double 
                 _ => Detail.Length > 0 ? $"NPC · {Detail}" : "NPC",
             };
             if (Kind == "zone") return kind;
+            if (Kind is "mining" or "herbalism") return $"{Detail} · every spot, most in {Zone}";
             var where = !HasSpot ? " (whole zone)" : Kind != "npc" && Detail.Length > 0 ? $" ({Detail})" : "";
             return $"{kind} · {Zone}{where}";
         }

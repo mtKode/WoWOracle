@@ -40,6 +40,8 @@ public static partial class GameDatabaseBuilder
         "UiMapXMapArt", "UiMapArt", "UiMapArtStyleLayer", "UiMapArtTile", "WorldMapOverlay", "WorldMapOverlayTile",
         // map search (towns, landmarks, flight masters) and dungeon bosses (WoW Forever's own dungeons too)
         "AreaPOI", "TaxiNodes", "DungeonEncounter",
+        // ore and herb nodes: which gameobject locks need Mining or Herbalism, and at what skill
+        "Lock",
         // WoW Forever talents (trait trees). The Cond/Group/Currency tables are fetched for the next step: exact unlock rules.
         "TraitEdge", "TraitDefinitionEffectPoints", "CurvePoint", // per-rank talent values (Improved Seals 5/10/15%)
         "TraitCond", "TraitNodeGroup", "TraitNodeGroupXTraitNode", "TraitNodeGroupXTraitCond", "TraitNodeXTraitCond",

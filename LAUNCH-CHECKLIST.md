@@ -6,7 +6,7 @@ before launch).
 
 ## 1. Setup and addon install
 - [ ] Start the app. The bar above the search box shows `_forever_ (Forever)   not installed` → **Install addon**.
-- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.11.0` in green.
+- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.12.0` in green.
 - [ ] In game, the addon is listed and **not** "out of date". The TOC says `## Interface: 16001` (beta). If the
       release client has a new interface number (`/dump select(4, GetBuildInfo())`), update the TOC, rebuild, Update addon.
 - [ ] The leftover `_classic_beta_` folder is ignored (shown nowhere). Delete it if Battle.net left it behind.
@@ -62,6 +62,14 @@ before launch).
 - [ ] Map: search "freewind", "shimmering", a Riverglades subzone and an NPC; each opens the zone with a marker on the spot.
 - [ ] Addon 0.11.0: spend a minute in a subzone the search shows as "(whole zone)" (Faol's Rest), `/oracle sync`: the
       Chronicle says "From the game: 1 subzone on the map" and the search puts a marker there.
+
+## 5f. Ore & herbs (app 1.1.13, addon 0.12.0)
+- [ ] First start rebuilds the game data (schema 30). Map → **Ore & herbs**: Mining lists Copper 1 … Rich Thorium 275,
+      Herbalism Peacebloom 1 … Black Lotus 300; your skill's row is gold.
+- [ ] Pick Copper Vein: the map opens on its best zone with copper dots; the zone list under it opens other zones with dots.
+- [ ] Map search "tin" / "peacebloom" opens the guide on it. **Clear** takes the dots off.
+- [ ] In game, mine or pick a few nodes in a Forever zone (Riverglades), `/oracle sync`: the Chronicle says
+      "… ore/herb spots on the map" and the node shows there (a new name lists with skill "?").
 
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.

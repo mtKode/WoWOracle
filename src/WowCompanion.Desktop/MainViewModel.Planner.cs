@@ -96,6 +96,7 @@ public partial class MainViewModel
             : _characters.FirstOrDefault()?.Name ?? NoCharacter;
         OnPropertyChanged(nameof(HasPlanCharacters));
         OnPropertyChanged(nameof(NoPlanCharacters));
+        if (ShowGatherPanel) LoadGatherGuide(); // your Mining / Herbalism skill may have gone up
 
         if (!log) return;
         foreach (var c in _characters.Where(c => !before.TryGetValue(c.Name, out var t) || t != c.Time))
