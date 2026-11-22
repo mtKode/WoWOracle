@@ -241,12 +241,13 @@ public static class SourceImporter
 
         // Vendors, directly or through a shared vendor template.
         var vendor = T("npc_vendor");
-        foreach (var r in vendor.Rows) Add(vendor.Int(r, "item"), "vendor", vendor.Int(r, "entry"), 100);
+        foreach (var r in vendor.Rows)
+            if (!TestVendors.Contains(vendor.Int(r, "entry"))) Add(vendor.Int(r, "item"), "vendor", vendor.Int(r, "entry"), 100);
         var vendorTemplate = T("npc_vendor_template");
         var templateItems = vendorTemplate.Rows.GroupBy(r => vendorTemplate.Int(r, "entry"))
             .ToDictionary(g => g.Key, g => g.Select(r => vendorTemplate.Int(r, "item")).ToList());
         foreach (var r in npcs.Rows)
-            if (templateItems.TryGetValue(npcs.Int(r, "VendorTemplateId"), out var items))
+            if (!TestVendors.Contains(npcs.Int(r, "Entry")) && templateItems.TryGetValue(npcs.Int(r, "VendorTemplateId"), out var items))
                 foreach (var item in items) Add(item, "vendor", npcs.Int(r, "Entry"), 100);
 
         // Quest rewards: fixed rewards and "choose one of".
@@ -264,6 +265,13 @@ public static class SourceImporter
                 .Select(g => g.OrderByDescending(s => (double)s[3]).First()));
         return sources.Count;
     }
+
+    /// <summary>
+    /// Developer test NPCs in the Classic data that "sell" real items but never stand anywhere in the world: Jimmy
+    /// McWeaksauce &lt;Cool Guy&gt; (bandages, poisons, reagents and his own McWeaksauce drinks). Other vendors without a
+    /// spawn are real: summoned (Vendor-Tron 1000, Field Repair Bot) or holiday sellers.
+    /// </summary>
+    private static readonly HashSet<int> TestVendors = [17078];
 
     /// <summary>Lock types in the client's Lock table: 2 = a skill lock; its index 2 = Herbalism, 3 = Mining.</summary>
     private const int LockSkill = 2, LockHerbalism = 2, LockMining = 3;
