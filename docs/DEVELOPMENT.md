@@ -55,6 +55,7 @@ Everything lives in `%LOCALAPPDATA%\WowCompanion`:
 | `icons\`, `maps\`, `talent-layouts\` | Image and layout caches | Yes |
 | `user.sqlite` | Everything the user made: gear/talent sets, notes, craft list, settings, learned quests/items/sightings | **No**: back this one up |
 | `wow-path.txt` | WoW folder picked with Browse… | Yes |
+| `window.txt` | Where the window was and its size (saved on close, put back at start if still on a screen) | Yes |
 | `data-product.txt` | Optional: another wago.tools product code to build from | — |
 
 ## Game data

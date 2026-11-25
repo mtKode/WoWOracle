@@ -11,6 +11,8 @@ before launch).
       release client has a new interface number (`/dump select(4, GetBuildInfo())`), update the TOC, rebuild, Update addon.
 - [ ] The leftover `_classic_beta_` folder is ignored (shown nowhere). Delete it if Battle.net left it behind.
 
+- [ ] Move and resize the window, Exit from the tray, start again: it opens in the same spot and size (maximized too).
+
 ## 2. `/oracle debug` (post the output)
 - [ ] Client version / build / interface.
 - [ ] Talents: `C_Traits`, `C_ClassTalents`, `INSPECT_TRAIT_CONFIG_ID`, trait talents count.

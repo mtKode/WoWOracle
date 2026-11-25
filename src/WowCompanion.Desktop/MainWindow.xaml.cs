@@ -86,6 +86,10 @@ public partial class MainWindow : FluentWindow
     {
         InitializeComponent();
         _vm = viewModel;
+        WindowPlacement.Restore(this);
+        Closing += (_, _) => WindowPlacement.Save(this);
+        // Windows shutting down or logging off ends the app without closing the window.
+        Application.Current.SessionEnding += (_, _) => WindowPlacement.Save(this);
         DataContext = viewModel;
 
         // Use the game's own font when it can be found; otherwise the Palatino fallback in the XAML stays.
