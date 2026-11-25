@@ -79,6 +79,11 @@ before launch).
 - [ ] Professions → First Aid: Runecloth Bandage says "from Doctor Gregory Victor (Arathi Highlands) or …".
       Alchemy Greater Mana Potion names Rogvar / Kylanna Windwhisper.
 
+## 5h. NPC spawns (app 1.1.18)
+- [ ] First start rebuilds the game data (schema 33). Map search "Harvest Golem": Westfall opens with the marker and
+      red dots on its other spawns; the marker's tooltip says "27 spawn points in Westfall".
+- [ ] An item "Dropped by" a mob → View on map: the same red dots. A single-spawn NPC (a trainer) shows only the marker.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

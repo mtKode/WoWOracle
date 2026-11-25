@@ -7,7 +7,7 @@ namespace WowCompanion.Core;
 /// </summary>
 public static class GameDb
 {
-    public const int SchemaVersion = 32;
+    public const int SchemaVersion = 33;
 
     private static readonly string Prefix = $"game-s{SchemaVersion}-";
     private const string AnyPrefix = "game-";

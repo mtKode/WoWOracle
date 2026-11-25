@@ -43,6 +43,8 @@ public static class SourceImporter
         CREATE TABLE gather_spawns (node_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL);
         CREATE INDEX gather_spawns_node ON gather_spawns (node_id);
         CREATE INDEX gather_spawns_zone ON gather_spawns (zone);
+        CREATE TABLE npc_spawns (npc_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL);
+        CREATE INDEX npc_spawns_npc ON npc_spawns (npc_id);
         CREATE TABLE recipe_trainers (spell_id INTEGER NOT NULL, npc_id INTEGER NOT NULL, skill INTEGER NOT NULL);
         CREATE INDEX recipe_trainers_spell ON recipe_trainers (spell_id);
         """;
@@ -53,7 +55,7 @@ public static class SourceImporter
         "gameobject", "gameobject_loot_template", "npc_vendor", "npc_vendor_template", "quest_template",
         "creature_questrelation", "gameobject_questrelation", "item_loot_template", "pickpocketing_loot_template",
         "skinning_loot_template", "fishing_loot_template", "npc_trainer", "npc_trainer_template",
-        "spell_template",
+        "spell_template", "creature_spawn_entry",
     ];
 
     /// <summary>Big tables of which only some rows matter: spell_template only for its "learn a spell" spells.</summary>
@@ -126,6 +128,27 @@ public static class SourceImporter
                     npcs.Int(r, "Rank"), map, zone, zx, zy,
                 };
             }));
+
+        // ----- every spawn of every creature, in zone coordinates (the map's dots for a picked NPC) -----
+        if (locator is not null)
+        {
+            // A spawn with id 0 is one of several creatures (creature_spawn_entry: guid → entries); it counts for each.
+            var creatures = T("creature");
+            var spawnEntries = T("creature_spawn_entry");
+            var entriesOf = spawnEntries.Rows.GroupBy(r => spawnEntries.Int(r, "guid"))
+                .ToDictionary(g => g.Key, g => g.Select(r => spawnEntries.Int(r, "entry")).ToList());
+            Insert(connection, transaction, "INSERT INTO npc_spawns (npc_id, zone, x, y) VALUES ($a, $b, $c, $d)",
+                creatures.Rows
+                    .SelectMany(r =>
+                    {
+                        var (zone, x, y) = locator.Locate(creatures.Int(r, "map"), creatures.Real(r, "position_x"), creatures.Real(r, "position_y"));
+                        var ids = creatures.Int(r, "id") is > 0 and var id ? [id] : entriesOf.GetValueOrDefault(creatures.Int(r, "guid"), []);
+                        return ids.Select(i => (Id: i, Zone: zone, X: Math.Round(x, 1), Y: Math.Round(y, 1)));
+                    })
+                    .Where(s => s.Id > 0 && s.Zone.Length > 0 && s.X > 0 && s.Y > 0)
+                    .Distinct()
+                    .Select(s => new object[] { s.Id, s.Zone, s.X, s.Y }));
+        }
 
         // ----- objects (chests, herbs, ore, fishing schools) -----
         var objects = T("gameobject_template");

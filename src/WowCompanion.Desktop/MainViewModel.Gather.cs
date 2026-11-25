@@ -114,7 +114,7 @@ public partial class MainViewModel
     private void OpenZoneMapKeepNodes(string zone)
     {
         if (_maps?.Find(zone) is not { } map) return;
-        _mapFocus = null;
+        (_mapFocus, _mapNpc) = (null, null);
         CurrentView = AppView.Map;
         if (SelectedMapZone?.UiMapId == map.UiMapId) _ = LoadMapAsync();
         else SelectedMapZone = MapZones.FirstOrDefault(m => m.UiMapId == map.UiMapId) ?? map;

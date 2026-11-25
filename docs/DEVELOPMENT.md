@@ -158,6 +158,10 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   has no learn skill for trainer recipes, and against Classic's lists the real one is 49 below to 5 above yellow, so
   yellow almost never claims "learnable" too early. When nothing is learnable at a skill, the planner falls back to
   estimated recipes from 20 below yellow, with a note.
+- **NPC spawns** (`npc_spawns`: npc, zone, x, y; game data schema 33): every Classic creature spawn in zone
+  coordinates (a spawn with id 0 counts for each creature `creature_spawn_entry` gives it). `npcs.zone` keeps one
+  main spot; `MapService.NpcSpots(name, zone)` gives all of them (every entry of that name, merged within 0.3), drawn
+  as red dots around the marker when the map opens on an NPC.
 - **Recipe trainers** (`recipe_trainers`: spell, npc, skill): the trainer's spell is a "teach" spell whose LEARN_SPELL
   effect (36) names the recipe. Today's client lacks most of those, so the dump's `spell_template` is read for them
   (only its effect-36 rows are kept). A recipe taught by at most 4 trainers (by name) shows them: "Taught by" on the

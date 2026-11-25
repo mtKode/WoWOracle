@@ -183,6 +183,8 @@ zone that would beat what your gear set wears.
 The game's own zone maps, fully explored. Scroll to zoom, drag to move, coordinates under the mouse like in game.
 **View on map** buttons all over the app open the right zone with a marker. The search box above the zone list
 finds zones, subzones (Freewind Post, The Shimmering Flats), towns, flight masters, NPCs, ores and herbs, and marks the spot.
+An NPC that spawns in several places (mobs, wandering rares) also gets a red dot on every other spawn in that zone,
+from the map search and from **View on map** on a "Dropped by" or "Sold by" line.
 
 **Ore & herbs** (next to *Zones*) is a Mining and Herbalism guide: every ore or herb with the skill it needs and
 the zones with the most of it, your current one in gold. Pick one and the map shows a dot on every spot where it can

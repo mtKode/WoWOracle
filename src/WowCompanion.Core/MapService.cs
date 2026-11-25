@@ -144,6 +144,41 @@ public sealed class MapService(string databasePath)
             .OrderBy(m => m.Type == 3 ? 0 : 1).ThenBy(m => m.UiMapId).FirstOrDefault();
 
     /// <summary>
+    /// Every spot in a zone where an NPC of this name spawns (all its entries; Classic data, game data schema 33),
+    /// spots closer than 0.3 map units merged.
+    /// </summary>
+    public IReadOnlyList<(double X, double Y)> NpcSpots(string name, string zone)
+    {
+        var spots = new List<(double X, double Y)>();
+        try
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = databasePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT s.x, s.y FROM npc_spawns s JOIN npcs n ON n.id = s.npc_id
+                WHERE n.name = $n AND s.zone = $z COLLATE NOCASE
+                LIMIT 2000
+                """;
+            command.Parameters.AddWithValue("$n", name);
+            command.Parameters.AddWithValue("$z", zone);
+            using var r = command.ExecuteReader();
+            while (r.Read())
+            {
+                var (x, y) = (r.GetDouble(0), r.GetDouble(1));
+                if (!spots.Any(s => Math.Abs(s.X - x) < 0.3 && Math.Abs(s.Y - y) < 0.3)) spots.Add((x, y));
+            }
+        }
+        catch (SqliteException) { } // game data before schema 33
+        return spots;
+    }
+
+    /// <summary>
     /// The Map page's search: zones, subzones, towns and flight masters (map_places, game data schema 29) and NPCs
     /// with a known spot, whose name contains the text. Names starting with it first, then zones before places
     /// before NPCs. Only places on a zone map the app has.

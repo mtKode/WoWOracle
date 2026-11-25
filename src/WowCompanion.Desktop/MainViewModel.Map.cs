@@ -8,7 +8,7 @@ namespace WowCompanion.Desktop;
 
 /// <summary>
 /// A marker on the map, in picture pixels. Kind: "focus" (what you asked to see), "tale" (a tale's start), or
-/// "mining" / "herbalism" (a spot where the picked ore or herb can spawn).
+/// "mining" / "herbalism" (a spot where the picked ore or herb can spawn), or "npc" (another spawn of the NPC asked for).
 /// </summary>
 public sealed record MapPin(double Left, double Top, string Label, string Kind, string Tip)
 {
@@ -16,6 +16,7 @@ public sealed record MapPin(double Left, double Top, string Label, string Kind, 
     public bool IsTale => Kind == "tale";
     public bool IsOre => Kind == "mining";
     public bool IsHerb => Kind == "herbalism";
+    public bool IsNpc => Kind == "npc";
 }
 
 /// <summary>
@@ -28,6 +29,8 @@ public partial class MainViewModel
     private MapService? _maps;
     private int _mapRun;
     private MapSpot? _mapFocus;
+    /// <summary>The NPC whose spawns are dotted around the focus (map search, "View on map" on a mob or vendor).</summary>
+    private string? _mapNpc;
 
     public ObservableCollection<ZoneMap> MapZones { get; } = [];
     public ObservableCollection<MapPin> MapPins { get; } = [];
@@ -70,7 +73,7 @@ public partial class MainViewModel
     {
         if (value is not null) _talentBuilds.SetSetting("map_zone", value.Name);
         if (_mapFocus is not null && value is not null && !string.Equals(_mapFocus.Zone, value.Name, StringComparison.OrdinalIgnoreCase))
-            _mapFocus = null;
+            (_mapFocus, _mapNpc) = (null, null);
         _ = LoadMapAsync();
     }
 
@@ -114,8 +117,22 @@ public partial class MainViewModel
 
             if (_mapFocus is { } focus && SameZone(focus, map))
             {
+                // Every other spawn of the NPC in this zone: small red dots around the marker.
+                var spawnNote = "";
+                if (_mapNpc is { } npc && _maps is { } maps)
+                {
+                    var spots = await Task.Run(() => maps.NpcSpots(npc, map.Name));
+                    if (run != _mapRun) return;
+                    if (spots.Count > 1)
+                    {
+                        spawnNote = $"\n{spots.Count} spawn points in {map.Name} (red dots)";
+                        foreach (var (x, y) in spots.Where(s => Math.Abs(s.X - focus.X) >= 0.3 || Math.Abs(s.Y - focus.Y) >= 0.3))
+                            MapPins.Add(new MapPin(x / 100 * map.Width, y / 100 * map.Height, npc, "npc",
+                                $"{npc}\n{ItemSearchService.Location(map.Name, x, y, map.Name)}"));
+                    }
+                }
                 var pin = Pin(focus, map, focus.Label.Length > 0 ? focus.Label : map.Name, "focus",
-                    (focus.Label.Length > 0 ? focus.Label + "\n" : "") + ItemSearchService.Location(map.Name, focus.X, focus.Y, map.Name));
+                    (focus.Label.Length > 0 ? focus.Label + "\n" : "") + ItemSearchService.Location(map.Name, focus.X, focus.Y, map.Name) + spawnNote);
                 MapPins.Add(pin);
                 MapFocusRequested?.Invoke(pin);
             }
@@ -136,7 +153,10 @@ public partial class MainViewModel
     /// or a row that carries one.
     /// </summary>
     [RelayCommand]
-    private void ViewOnMap(object? target)
+    private void ViewOnMap(object? target) => ShowOnMap(target, target is SourceLine line ? line.Title : null);
+
+    /// <param name="npc">An NPC name whose other spawns get dots too (a source line's mob or vendor; nothing when none).</param>
+    private void ShowOnMap(object? target, string? npc)
     {
         var spot = target switch
         {
@@ -153,6 +173,7 @@ public partial class MainViewModel
             return;
         }
         _mapFocus = spot;
+        _mapNpc = npc;
         CurrentView = AppView.Map;
         if (SelectedMapZone?.UiMapId == map.UiMapId) _ = LoadMapAsync();
         else SelectedMapZone = MapZones.FirstOrDefault(m => m.UiMapId == map.UiMapId) ?? map;
@@ -167,7 +188,7 @@ public partial class MainViewModel
             Toast("No map for this zone yet.");
             return;
         }
-        _mapFocus = null;
+        (_mapFocus, _mapNpc) = (null, null);
         CurrentView = AppView.Map;
         SelectedMapZone = MapZones.FirstOrDefault(m => m.UiMapId == map.UiMapId) ?? map;
     }
@@ -216,7 +237,7 @@ public partial class MainViewModel
     {
         if (hit is null) return;
         if (hit.Kind is "mining" or "herbalism") ShowGatherNodeByName(hit.Name);
-        else if (hit.HasSpot) ViewOnMap(new MapSpot(hit.Zone, hit.X, hit.Y, hit.Kind == "zone" ? "" : hit.Name));
+        else if (hit.HasSpot) ShowOnMap(new MapSpot(hit.Zone, hit.X, hit.Y, hit.Kind == "zone" ? "" : hit.Name), hit.Kind == "npc" ? hit.Name : null);
         else OpenZoneMap(hit.Zone);
     }
 
