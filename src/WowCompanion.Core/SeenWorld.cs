@@ -294,6 +294,11 @@ public static class KnownIds
             while (r.Read()) list.Add(r.GetInt32(0));
             return list;
         }
+        List<int> Spawned()
+        {
+            try { return Ids("SELECT DISTINCT npc_id FROM npc_spawns WHERE seen = 0"); }
+            catch (SqliteException) { return []; } // game data before schema 34
+        }
         IEnumerable<int> Placeholders()
         {
             try { return Ids("SELECT id FROM placeholder_items"); }
@@ -314,6 +319,8 @@ public static class KnownIds
         {
             ("npcs", Ids("SELECT id FROM npcs")),
             ("placed", Ids("SELECT id FROM npcs WHERE zone <> '' AND max_level > 0")),
+            // NPCs with Classic spawns: the addon notes every spot of the others (NpcSpotStore).
+            ("spawned", Spawned()),
             ("objects", Ids("SELECT id FROM objects")),
             ("quests", Ids("SELECT id FROM quests").Where(id => !learnedQuests.Contains(id)).ToList()),
             ("vendors", Ids("SELECT DISTINCT ref_id FROM item_sources WHERE kind = 'vendor'")),

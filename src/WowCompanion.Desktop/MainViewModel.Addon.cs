@@ -132,6 +132,8 @@ public partial class MainViewModel
 
         /// <summary>Ore and herb spots added to the map from nodes you gathered.</summary>
         public int GatherSpots { get; init; }
+        /// <summary>New spots where you came near one of Forever's own NPCs.</summary>
+        public int NpcSpots { get; init; }
     }
 
     private readonly BaseStatsStore _baseStats = new(paths.UserDbPath);
@@ -154,6 +156,25 @@ public partial class MainViewModel
     private readonly TrainerSkillStore _trainerSkills = new(paths.UserDbPath);
     private readonly PlaceSightingStore _placeSightings = new(paths.UserDbPath);
     private readonly NodeSightingStore _nodeSightings = new(paths.UserDbPath);
+    private readonly NpcSpotStore _npcSpots = new(paths.UserDbPath);
+
+    /// <summary>"!WOWORACLE-SPOT 1" blocks into user.sqlite, then all of them into the game data's NPC spawns.</summary>
+    /// <returns>How many spots were new.</returns>
+    private int ApplyNpcSpots(string gameDbPath, IEnumerable<string> addonTexts)
+    {
+        try
+        {
+            var read = addonTexts.SelectMany(t => AddonSavedData.Blocks(t, NpcSpotSighting.Marker))
+                .Select(NpcSpotSighting.Parse).OfType<NpcSpotSighting>().ToList();
+            var added = read.Count > 0 ? _npcSpots.Save(read) : 0;
+            NpcSpotStore.ApplyTo(gameDbPath, _npcSpots.All());
+            return added;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
 
     /// <summary>"!WOWORACLE-NODE 1" blocks into user.sqlite, then into the game data's ore and herb spots.</summary>
     private int ApplyNodeSightings(string gameDbPath, IEnumerable<string> addonTexts)
@@ -233,6 +254,7 @@ public partial class MainViewModel
         var trainerRecipes = ApplyTrainerSkills(gameDbPath, texts);
         var placedSubzones = ApplyPlaceSightings(gameDbPath, texts);
         var gatherSpots = ApplyNodeSightings(gameDbPath, texts);
+        var npcSpots = ApplyNpcSpots(gameDbPath, texts); // after the sightings: their NPCs exist by now
         (List<string> Classes, int Build) talentTrees = talents ? ApplyAddonTalents(gameDbPath, version, texts) : (new List<string>(), 0);
         // After the gaps are filled, so the addon doesn't record them again; only rebuilt when something changed.
         var changed = items > 0 || quests.Added.Count + quests.Updated.Count > 0 || sightings.Any;
@@ -243,6 +265,7 @@ public partial class MainViewModel
             TrainerRecipes = trainerRecipes,
             PlacedSubzones = placedSubzones,
             GatherSpots = gatherSpots,
+            NpcSpots = npcSpots,
         };
     }
 
@@ -281,6 +304,7 @@ public partial class MainViewModel
             parts.Add($"{Plural(r.GatherSpots, "ore/herb spot")} on the map");
             if (_gameDbPath.Length > 0) UseGather(_gameDbPath); // the guide and the dots read the new spots
         }
+        if (r.NpcSpots > 0) parts.Add($"{Plural(r.NpcSpots, "NPC spot")} on the map");
         if (r.TrainerRecipes > 0) parts.Add(Plural(r.TrainerRecipes, "trainer skill"));
         if (r.NewBaseStats > 0) parts.Add(Plural(r.NewBaseStats, "base-stat level"));
         if (r.TalentClasses.Count > 0) parts.Add($"{string.Join(", ", r.TalentClasses.Order())} talents (build {r.ClientBuild})");

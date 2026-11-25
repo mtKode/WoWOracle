@@ -99,7 +99,7 @@ local function hasKnownList() return type(WoWOracleKnown) == "table" end
 local function knownSummary()
     if not hasKnownList() then return "no known-data list yet (the app writes Known.lua when it starts)" end
     local parts = {}
-    for _, kind in ipairs({ "npcs", "placed", "objects", "quests", "vendors", "sourced", "items" }) do
+    for _, kind in ipairs({ "npcs", "placed", "spawned", "objects", "quests", "vendors", "sourced", "items" }) do
         isKnown(kind, 0)
         parts[#parts + 1] = ("%s %d ranges"):format(kind, #knownSets[kind].lo)
     end
@@ -1353,9 +1353,12 @@ local function npcText(n)
     }, "\n")
 end
 
+local noteNpcSpot -- every spot of an NPC: "Where NPCs stand" below
+
 local function sawUnit(unit)
     if not UnitExists(unit) or UnitIsPlayer(unit) or UnitPlayerControlled(unit) then return end
     local kind, id = guidInfo(UnitGUID(unit))
+    if kind == "npc" then pcall(noteNpcSpot, unit, id) end -- every spot of Forever's own NPCs (below)
     if kind ~= "npc" or isKnown("placed", id) ~= false then return end -- the app knows where it stands
     local store = seenStore("npcs")
     local n = store[id]
@@ -1636,6 +1639,41 @@ local function onCastSucceeded(unit, castGUID)
     if n >= NODE_MAX then return end
     WoWOracleDB.nodes[key] = ("!WOWORACLE-NODE 1\nnode=%s;%s;%s;%.1f;%.1f\n!END"):format(
         cast.kind, clean(cast.name), clean(zoneName), x, y)
+end
+
+-- ------------------------------------------------------------------------------------------------
+-- Where NPCs stand: every spot you come near one the app has no Classic spawns for (WoW Forever's own), so the map can
+-- dot all of its spawns, not just the first one. Your spot stands in for the NPC's, so only when it's within about
+-- 10 yards (CheckInteractDistance 3). One entry per NPC and 2-unit square of the zone map in WoWOracleDB.npcSpots,
+-- at most SPOT_PER_NPC per NPC and SPOT_MAX in all.
+-- ------------------------------------------------------------------------------------------------
+
+local SPOT_MAX, SPOT_PER_NPC = 4000, 40
+local spotCounts -- npc id -> entries, counted once from the saved list
+
+function noteNpcSpot(unit, id)
+    if not hasKnownList() or isKnown("spawned", id) ~= false then return end -- Classic data has its spawns
+    if not (CheckInteractDistance and try(CheckInteractDistance, unit, 3)) then return end
+    local zoneName, x, y = playerPlace()
+    if zoneName == "" or (x or 0) <= 0 or (y or 0) <= 0 then return end
+    WoWOracleDB = WoWOracleDB or {}
+    WoWOracleDB.npcSpots = WoWOracleDB.npcSpots or {}
+    local spots = WoWOracleDB.npcSpots
+    local key = ("%d:%s:%d:%d"):format(id, zoneName, math.floor(x / 2), math.floor(y / 2))
+    if spots[key] then return end
+    if not spotCounts then
+        spotCounts = { total = 0 }
+        for k in pairs(spots) do
+            local npc = tonumber((strsplit(":", k)))
+            if npc then spotCounts[npc] = (spotCounts[npc] or 0) + 1 end
+            spotCounts.total = spotCounts.total + 1
+        end
+    end
+    if spotCounts.total >= SPOT_MAX or (spotCounts[id] or 0) >= SPOT_PER_NPC then return end
+    spots[key] = ("!WOWORACLE-SPOT 1\nspot=%d;%s;%s;%.1f;%.1f\n!END"):format(
+        id, clean(UnitName(unit) or ""), clean(zoneName), x, y)
+    spotCounts[id] = (spotCounts[id] or 0) + 1
+    spotCounts.total = spotCounts.total + 1
 end
 
 -- ------------------------------------------------------------------------------------------------

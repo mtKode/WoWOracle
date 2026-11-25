@@ -8,7 +8,7 @@ namespace WowCompanion.Desktop;
 
 /// <summary>
 /// A marker on the map, in picture pixels. Kind: "focus" (what you asked to see), "tale" (a tale's start), or
-/// "mining" / "herbalism" (a spot where the picked ore or herb can spawn), or "npc" (another spawn of the NPC asked for).
+/// "mining" / "herbalism" (a spot where the picked ore or herb can spawn), or "npc" (a spawn of an NPC that has several).
 /// </summary>
 public sealed record MapPin(double Left, double Top, string Label, string Kind, string Tip)
 {
@@ -117,22 +117,23 @@ public partial class MainViewModel
 
             if (_mapFocus is { } focus && SameZone(focus, map))
             {
-                // Every other spawn of the NPC in this zone: small red dots around the marker.
-                var spawnNote = "";
+                // An NPC that spawns in several places: a red dot on each (the asked-for spot among them), no marker,
+                // and the whole map instead of a zoom on one of them.
                 if (_mapNpc is { } npc && _maps is { } maps)
                 {
-                    var spots = await Task.Run(() => maps.NpcSpots(npc, map.Name));
+                    var spots = (await Task.Run(() => maps.NpcSpots(npc, map.Name))).ToList();
                     if (run != _mapRun) return;
+                    if (!spots.Any(s => Math.Abs(s.X - focus.X) < 0.3 && Math.Abs(s.Y - focus.Y) < 0.3)) spots.Add((focus.X, focus.Y));
                     if (spots.Count > 1)
                     {
-                        spawnNote = $"\n{spots.Count} spawn points in {map.Name} (red dots)";
-                        foreach (var (x, y) in spots.Where(s => Math.Abs(s.X - focus.X) >= 0.3 || Math.Abs(s.Y - focus.Y) >= 0.3))
+                        foreach (var (x, y) in spots)
                             MapPins.Add(new MapPin(x / 100 * map.Width, y / 100 * map.Height, npc, "npc",
-                                $"{npc}\n{ItemSearchService.Location(map.Name, x, y, map.Name)}"));
+                                $"{npc}\n{ItemSearchService.Location(map.Name, x, y, map.Name)}\n{spots.Count} spawn points in {map.Name}"));
+                        return;
                     }
                 }
                 var pin = Pin(focus, map, focus.Label.Length > 0 ? focus.Label : map.Name, "focus",
-                    (focus.Label.Length > 0 ? focus.Label + "\n" : "") + ItemSearchService.Location(map.Name, focus.X, focus.Y, map.Name) + spawnNote);
+                    (focus.Label.Length > 0 ? focus.Label + "\n" : "") + ItemSearchService.Location(map.Name, focus.X, focus.Y, map.Name));
                 MapPins.Add(pin);
                 MapFocusRequested?.Invoke(pin);
             }

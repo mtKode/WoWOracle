@@ -6,7 +6,7 @@ before launch).
 
 ## 1. Setup and addon install
 - [ ] Start the app. The bar above the search box shows `_forever_ (Forever)   not installed` → **Install addon**.
-- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.12.0` in green.
+- [ ] `_forever_\Interface\AddOns\WoWOracle` exists afterwards; the bar shows `✓ 0.13.0` in green.
 - [ ] In game, the addon is listed and **not** "out of date". The TOC says `## Interface: 16001` (beta). If the
       release client has a new interface number (`/dump select(4, GetBuildInfo())`), update the TOC, rebuild, Update addon.
 - [ ] The leftover `_classic_beta_` folder is ignored (shown nowhere). Delete it if Battle.net left it behind.
@@ -79,10 +79,12 @@ before launch).
 - [ ] Professions → First Aid: Runecloth Bandage says "from Doctor Gregory Victor (Arathi Highlands) or …".
       Alchemy Greater Mana Potion names Rogvar / Kylanna Windwhisper.
 
-## 5h. NPC spawns (app 1.1.18)
-- [ ] First start rebuilds the game data (schema 33). Map search "Harvest Golem": Westfall opens with the marker and
-      red dots on its other spawns; the marker's tooltip says "27 spawn points in Westfall".
-- [ ] An item "Dropped by" a mob → View on map: the same red dots. A single-spawn NPC (a trainer) shows only the marker.
+## 5h. NPC spawns (app 1.1.19, addon 0.13.0)
+- [ ] First start rebuilds the game data (schema 34). Map search "Harvest Golem": Westfall opens on the whole map with a
+      red dot on each spawn and no marker; a dot's tooltip says "27 spawn points in Westfall".
+- [ ] An item "Dropped by" a mob → View on map: the same red dots. A single-spawn NPC (a trainer) shows the marker.
+- [ ] In a Forever zone, walk up to a few of the same Forever mob in different places (target or mouse over them up
+      close), `/oracle sync`: the Chronicle says "… NPC spots on the map"; map search on it shows the dots.
 
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.

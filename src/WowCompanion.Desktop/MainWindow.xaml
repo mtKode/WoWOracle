@@ -2947,7 +2947,7 @@
                                                          Visibility="{Binding IsOre, Converter={StaticResource BoolToVis}}" />
                                                 <Ellipse Canvas.Left="-5" Canvas.Top="-5" Width="10" Height="10" Fill="#86DB6E" Stroke="#0E2606" StrokeThickness="1.5"
                                                          Visibility="{Binding IsHerb, Converter={StaticResource BoolToVis}}" />
-                                                <!-- Another spawn of the NPC asked for: a small red dot -->
+                                                <!-- A spawn of an NPC that has several: a small red dot -->
                                                 <Ellipse Canvas.Left="-4.5" Canvas.Top="-4.5" Width="9" Height="9" Fill="#E0503C" Stroke="#2A0804" StrokeThickness="1.5"
                                                          Visibility="{Binding IsNpc, Converter={StaticResource BoolToVis}}" />
                                                 <!-- A tale begins here: the gold "!" of a quest giver -->

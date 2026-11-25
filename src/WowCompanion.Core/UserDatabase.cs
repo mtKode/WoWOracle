@@ -159,6 +159,17 @@ public static class UserDatabase
             PRIMARY KEY (kind, name, zone, x, y)
         );
         """,
+        """
+        CREATE TABLE seen_npc_spots (
+            npc_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            zone TEXT NOT NULL,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            updated_utc TEXT NOT NULL,
+            PRIMARY KEY (npc_id, zone, x, y)
+        );
+        """,
     ];
 
     public static void Initialize(string path)

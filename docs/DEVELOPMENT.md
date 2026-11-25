@@ -160,8 +160,10 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   estimated recipes from 20 below yellow, with a note.
 - **NPC spawns** (`npc_spawns`: npc, zone, x, y; game data schema 33): every Classic creature spawn in zone
   coordinates (a spawn with id 0 counts for each creature `creature_spawn_entry` gives it). `npcs.zone` keeps one
-  main spot; `MapService.NpcSpots(name, zone)` gives all of them (every entry of that name, merged within 0.3), drawn
-  as red dots around the marker when the map opens on an NPC.
+  main spot; `MapService.NpcSpots(name, zone)` gives all of them (every entry of that name, merged within 0.3). When
+  the map opens on an NPC with more than one, every spot is a red dot (no marker, no zoom). `seen = 1` rows are the
+  addon's spots of Forever's own NPCs (schema 34); Known.lua's `spawned` lists the NPCs with Classic spawns, which the
+  addon leaves alone.
 - **Recipe trainers** (`recipe_trainers`: spell, npc, skill): the trainer's spell is a "teach" spell whose LEARN_SPELL
   effect (36) names the recipe. Today's client lacks most of those, so the dump's `spell_template` is read for them
   (only its effect-36 rows are kept). A recipe taught by at most 4 trainers (by name) shows them: "Taught by" on the
@@ -184,6 +186,7 @@ Everything the addon saves is a text block: a marker line, `key=value` lines, `!
 | `!WOWORACLE-CHAR 1` | Profession ranks, known recipes, bag and bank counts | Crafting planner |
 | `!WOWORACLE-TALENTS 1` | The live talent tree: `node=id;x;y;maxRanks;spell;icon;unlocks;name;description` | Used only when the client build is newer than the wago.tools data |
 | `!WOWORACLE-PLACE 1` | Where you were in a subzone, averaged: `place=zone;subzone;x;y;samples` (sampled every 8 s, up to 60) | `seen_places` (user.sqlite) → `map_places`, only subzones without a spot, from 5 samples on |
+| `!WOWORACLE-SPOT 1` | A spot where you came within ~10 yards (`CheckInteractDistance` 3) of an NPC with no Classic spawns (Known.lua `spawned`): `spot=id;name;zone;x;y`, your spot standing in for its (one per NPC and 2-unit square, up to 40 per NPC and 4000 in all) | `seen_npc_spots` (user.sqlite) → `npc_spawns` with `seen = 1` (all replaced each pass); an NPC the data lacks gets an `npcs` row |
 | `!WOWORACLE-NODE 1` | An ore or herb node you gathered: `node=mining\|herbalism;name;zone;x;y` (the Mining / Herb Gathering cast's target, your spot when it succeeds; one per spot rounded to 1 map unit, up to 3000) | `seen_nodes` (user.sqlite) → `gather_spawns`, skipping spots the data has within 1 unit; a name the data lacks gets its own `gather_nodes` row (negative id, skill -1) |
 | `!WOWORACLE-TRAINER 1` | One per profession, all trainers merged: `profession=`, `recipe=skill;itemId;level;name` (the trainer window's skill requirement) | `trainer_skills` (user.sqlite) → `recipes.min_skill`, `skill_source = 'trainer'` |
 | `!WOWORACLE-BASE 1` | Base stats per class/race/level: `base=class;race;level;str;agi;sta;int;spi` (paper-doll stat minus gear and buffs), `vitals=health;mana;naked` | `base_stats` (user.sqlite) → Calculator naked stats (exact level, else interpolated) |

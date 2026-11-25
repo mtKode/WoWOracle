@@ -43,7 +43,8 @@ public static class SourceImporter
         CREATE TABLE gather_spawns (node_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL);
         CREATE INDEX gather_spawns_node ON gather_spawns (node_id);
         CREATE INDEX gather_spawns_zone ON gather_spawns (zone);
-        CREATE TABLE npc_spawns (npc_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL);
+        -- seen = 1: a spot the addon noted (NpcSpotStore), not a Classic spawn.
+        CREATE TABLE npc_spawns (npc_id INTEGER NOT NULL, zone TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, seen INTEGER NOT NULL DEFAULT 0);
         CREATE INDEX npc_spawns_npc ON npc_spawns (npc_id);
         CREATE TABLE recipe_trainers (spell_id INTEGER NOT NULL, npc_id INTEGER NOT NULL, skill INTEGER NOT NULL);
         CREATE INDEX recipe_trainers_spell ON recipe_trainers (spell_id);
