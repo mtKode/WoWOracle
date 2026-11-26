@@ -29,6 +29,10 @@ public partial class MainViewModel
     [ObservableProperty] private bool _upgradeRaid = true;
     [ObservableProperty] private bool _upgradeDungeon = true;
     [ObservableProperty] private bool _upgradeWorld = true;
+    /// <summary>Only the class's heaviest armor (plate for a level 40+ paladin) in armor slots.</summary>
+    [ObservableProperty] private bool _upgradeArmorOnly = true;
+    /// <summary>"Plate only", for the set's class and level.</summary>
+    [ObservableProperty] private string _upgradeArmorLabel = "Best armor only";
 
     public bool ShowGearTotals => !IsUpgradePanelOpen;
     partial void OnIsUpgradePanelOpenChanged(bool value) => OnPropertyChanged(nameof(ShowGearTotals));
@@ -36,6 +40,7 @@ public partial class MainViewModel
     partial void OnUpgradeRaidChanged(bool value) => _ = RunUpgradesAsync();
     partial void OnUpgradeDungeonChanged(bool value) => _ = RunUpgradesAsync();
     partial void OnUpgradeWorldChanged(bool value) => _ = RunUpgradesAsync();
+    partial void OnUpgradeArmorOnlyChanged(bool value) => _ = RunUpgradesAsync();
 
     [RelayCommand]
     private async Task FindUpgrades(GearSlotRow? row)
@@ -67,12 +72,15 @@ public partial class MainViewModel
             var raid = UpgradeRaid;
             var dungeon = UpgradeDungeon;
             var world = UpgradeWorld;
+            var armorOnly = UpgradeArmorOnly;
+            UpgradeArmorLabel = $"{UpgradeFinder.ArmorName(UpgradeFinder.ArmorCapAt(set.ClassId, set.Level))} only";
             var result = await Task.Run(() =>
             {
                 var worn = SetGearBySlot(set.Id);
                 var items = worn.Values.ToList();
                 var current = worn.GetValueOrDefault(slot.SlotId);
-                return finder.Find(new UpgradeRequest(slot.SlotId, set.ClassId, set.Level, items, current, raid, dungeon, world));
+                return finder.Find(new UpgradeRequest(slot.SlotId, set.ClassId, set.Level, items, current, raid, dungeon, world,
+                    BestArmorOnly: armorOnly));
             });
             if (run != _upgradeRun) return;
 

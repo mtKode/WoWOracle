@@ -2412,7 +2412,9 @@
                                 <WrapPanel Margin="0,8,0,4">
                                     <CheckBox Content="Raid" IsChecked="{Binding UpgradeRaid}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
                                     <CheckBox Content="Dungeon" IsChecked="{Binding UpgradeDungeon}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
-                                    <CheckBox Content="World drops" IsChecked="{Binding UpgradeWorld}" Foreground="{StaticResource Parchment}" />
+                                    <CheckBox Content="World drops" IsChecked="{Binding UpgradeWorld}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
+                                    <CheckBox Content="{Binding UpgradeArmorLabel}" IsChecked="{Binding UpgradeArmorOnly}" Foreground="{StaticResource Parchment}"
+                                              ToolTip="Armor slots: only the heaviest armor this class wears at this level (cloaks, jewelry and off hands always show)" />
                                 </WrapPanel>
                                 <TextBlock Text="Searching…" FontSize="12" Foreground="{StaticResource Dim}"
                                            Visibility="{Binding UpgradeBusy, Converter={StaticResource BoolToVis}}" />

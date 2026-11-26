@@ -24,7 +24,8 @@ public sealed record UpgradeOption(
 
 public sealed record UpgradeRequest(
     int Slot, int ClassId, int Level, IReadOnlyList<GearItem> SetItems, GearItem? Current,
-    bool IncludeRaid = true, bool IncludeDungeon = true, bool IncludeWorld = true, int Limit = 25);
+    bool IncludeRaid = true, bool IncludeDungeon = true, bool IncludeWorld = true, int Limit = 25,
+    bool BestArmorOnly = true);
 
 /// <summary>A quest reward that beats what the set wears in <see cref="Slot"/>.</summary>
 public sealed record RewardUpgrade(UpgradeOption Option, int Slot, int QuestId, string QuestTitle);
@@ -276,7 +277,7 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
             {
                 var (id, cls, sub, inv, allow) = (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4));
                 if (allow > 0 && allow != -1 && (allow & (1 << (classId - 1))) == 0) continue;
-                if (!CanUse(classId, cls, sub, inv)) continue;
+                if (!CanUse(classId, maxRequiredLevel, cls, sub, inv)) continue;
                 questOf.TryAdd(id, (r.GetInt32(5), r.GetString(6)));
                 inventory[id] = inv;
             }
@@ -351,7 +352,9 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         {
             var (id, cls, sub, inv, allow) = (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4));
             if (allow > 0 && allow != -1 && (allow & (1 << (request.ClassId - 1))) == 0) continue;
-            if (!CanUse(request.ClassId, cls, sub, inv)) continue;
+            if (!CanUse(request.ClassId, request.Level, cls, sub, inv)) continue;
+            // "Plate only" (the class's heaviest armor at this level): body armor of lighter types is left out.
+            if (request.BestArmorOnly && cls == 4 && sub is >= 1 and <= 4 && inv != 16 && sub != ArmorCapAt(request.ClassId, request.Level)) continue;
             // Off hand: one-handers only for classes that dual wield in Classic (warrior, hunter, rogue).
             if (request.Slot == GearSlots.OffHand && inv == 13 && request.ClassId is not (1 or 3 or 4)) continue;
             ids.Add(id);
@@ -359,12 +362,24 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         return ids.Take(400).ToList();
     }
 
-    private static bool CanUse(int classId, int itemClass, int subclass, int inventoryType)
+    /// <summary>
+    /// The heaviest armor a class wears at a level (1 cloth, 2 leather, 3 mail, 4 plate): warriors and paladins learn
+    /// plate at 40 (mail before), hunters and shamans mail at 40 (leather before).
+    /// </summary>
+    public static int ArmorCapAt(int classId, int level)
+    {
+        var cap = ArmorCap.GetValueOrDefault(classId, 4);
+        return level < 40 && cap >= 3 ? cap - 1 : cap;
+    }
+
+    public static string ArmorName(int subclass) => subclass switch { 1 => "Cloth", 2 => "Leather", 3 => "Mail", 4 => "Plate", _ => "" };
+
+    private static bool CanUse(int classId, int level, int itemClass, int subclass, int inventoryType)
     {
         if (itemClass == 4) // armor
         {
             if (subclass == 6) return ShieldClasses.Contains(classId);
-            if (subclass is >= 1 and <= 4 && inventoryType != 16) return subclass <= ArmorCap.GetValueOrDefault(classId, 4);
+            if (subclass is >= 1 and <= 4 && inventoryType != 16) return subclass <= ArmorCapAt(classId, level);
             if (subclass is 7 or 8 or 9 or 10) return true; // librams, idols, totems: the slot itself decides
             return true;
         }

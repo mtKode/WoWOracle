@@ -126,7 +126,8 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   stat 42 is spell damage only. Not yet: procs, glancing/dodge/parry, "% of mana" talents, healing-received
   modifiers.
 - **Upgrades**: alternatives ranked by the stats the set already leans on (stat budget prices, e.g. 1% crit = 14
-  points), filtered by proficiency and level. Order: upgrades before the rest, then effort (quest / vendor / crafted /
+  points), filtered by proficiency and level (`ArmorCapAt`: plate for warriors and paladins, mail for hunters and
+  shamans from level 40; `BestArmorOnly` keeps just that type in armor slots, cloaks excepted). Order: upgrades before the rest, then effort (quest / vendor / crafted /
   dungeon, world drop, unknown, Honored reputation or more, endgame), the bigger gain first. Endgame = raid drops,
   quests with `quests.endgame` (raid quests, quests in a raid zone or asking for raid drops: Zul'Gurub, Ahn'Qiraj,
   tier 3), items with a PvP rank (`item_requirements`, from the dump's `item_template`, game data schema 35), and
