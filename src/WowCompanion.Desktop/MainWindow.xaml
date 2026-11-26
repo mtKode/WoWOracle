@@ -2320,147 +2320,164 @@
                         </ScrollViewer>
                     </Border>
 
-                    <!-- What the gear adds, and the upgrade list (hidden while the upgrade finder is open) -->
-                    <DockPanel Grid.Column="2" Width="290" Visibility="{Binding ShowGearTotals, Converter={StaticResource BoolToVis}}">
-                    <Border DockPanel.Dock="Top" VerticalAlignment="Top" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
-                            BorderThickness="1" CornerRadius="3" Padding="14,12">
-                        <StackPanel>
-                            <TextBlock Text="Gear totals" FontSize="16" Foreground="{StaticResource Gold}" />
-                            <TextBlock Text="Ratings are shown raw; the Calculator turns them into %." FontSize="12"
-                                       Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,8" />
-                            <ItemsControl ItemsSource="{Binding GearTotals}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,2,0,0">
-                                            <TextBlock Text="{Binding Label}" FontSize="13" Foreground="{StaticResource Parchment}" />
-                                            <TextBlock Text="{Binding Value}" FontSize="13" Foreground="{StaticResource Green}" HorizontalAlignment="Right" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                    <!-- Right column: gear totals, the upgrade finder and the upgrade list, one tab at a time -->
+                    <DockPanel Grid.Column="2" Width="470">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                            <RadioButton Style="{StaticResource TabRadio}" GroupName="GearPanel" Content="Totals" IsChecked="{Binding GearTabTotals}" />
+                            <RadioButton Style="{StaticResource TabRadio}" GroupName="GearPanel" Content="Upgrades" Margin="4,0,0,0"
+                                         IsChecked="{Binding GearTabUpgrades}" ToolTip="Alternatives for a slot (Upgrades on a slot)" />
+                            <RadioButton Style="{StaticResource TabRadio}" GroupName="GearPanel" Content="{Binding UpgradeListTabText}" Margin="4,0,0,0"
+                                         IsChecked="{Binding GearTabList}" ToolTip="Items to go and get, ticked off once you have them" />
                         </StackPanel>
-                    </Border>
+                        <Grid>
+                            <Border VerticalAlignment="Top" Visibility="{Binding ShowGearTotals, Converter={StaticResource BoolToVis}}" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+                                    BorderThickness="1" CornerRadius="3" Padding="14,12">
+                                <StackPanel>
+                                    <TextBlock Text="Gear totals" FontSize="16" Foreground="{StaticResource Gold}" />
+                                    <TextBlock Text="Ratings are shown raw; the Calculator turns them into %." FontSize="12"
+                                               Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,2,0,8" />
+                                    <ItemsControl ItemsSource="{Binding GearTotals}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,2,0,0">
+                                                    <TextBlock Text="{Binding Label}" FontSize="13" Foreground="{StaticResource Parchment}" />
+                                                    <TextBlock Text="{Binding Value}" FontSize="13" Foreground="{StaticResource Green}" HorizontalAlignment="Right" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
 
-                    <!-- Upgrade list: items to go and get, ticked off once you have them -->
-                    <Border Margin="0,8,0,0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
-                            BorderThickness="1" CornerRadius="3" Padding="12,10">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Top">
+                            <!-- Upgrade list: items to go and get, ticked off once you have them -->
+                            <Border Visibility="{Binding ShowUpgradeList, Converter={StaticResource BoolToVis}}" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+                                    BorderThickness="1" CornerRadius="3" Padding="12,10">
                                 <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="Clear got" Style="{StaticResource PillButton}" Padding="8,1"
-                                            ToolTip="Take the ticked-off items off the list"
-                                            Visibility="{Binding HasDoneUpgrades, Converter={StaticResource BoolToVis}}"
-                                            Command="{Binding ClearDoneUpgradesCommand}" />
-                                    <TextBlock Text="Upgrade list" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
-                                </DockPanel>
-                                <TextBlock Text="{Binding UpgradeListSummary}" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,2,0,4" />
-                                <TextBlock Text="Nothing yet. Upgrades on a slot, then + List puts an item here to go and get; tick it off when you have it."
-                                           FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap"
-                                           Visibility="{Binding UpgradeListEmpty, Converter={StaticResource BoolToVis}}" />
-                            </StackPanel>
-                            <ScrollViewer x:Name="WantList" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding UpgradeList}" Margin="0,0,6,0">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Style="{StaticResource ClickRow}" BorderBrush="{StaticResource Divider}" BorderThickness="0,0,0,1"
-                                                    MouseEnter="OnItemMouseEnter" MouseLeave="OnItemMouseLeave" Opacity="{Binding RowOpacity}">
-                                                <DockPanel>
-                                                    <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Done}" VerticalAlignment="Top" Margin="0,8,6,0"
-                                                              ToolTip="Got it" />
-                                                    <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="30" Height="30" Margin="0,0,8,0" VerticalAlignment="Top">
-                                                        <local:GameIcon FileId="{Binding IconId}" Size="medium" />
+                                    <StackPanel DockPanel.Dock="Top">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Clear got" Style="{StaticResource PillButton}" Padding="8,1"
+                                                    ToolTip="Take the ticked-off items off the list"
+                                                    Visibility="{Binding HasDoneUpgrades, Converter={StaticResource BoolToVis}}"
+                                                    Command="{Binding ClearDoneUpgradesCommand}" />
+                                            <TextBlock Text="Upgrade list" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding UpgradeListSummary}" FontSize="12" Foreground="{StaticResource Dim}" Margin="0,2,0,4" />
+                                        <TextBlock Text="Nothing yet. Upgrades on a slot, then + List puts an item here to go and get; tick it off when you have it."
+                                                   FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap"
+                                                   Visibility="{Binding UpgradeListEmpty, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                    <ScrollViewer x:Name="WantList" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding UpgradeList}" Margin="0,0,6,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Style="{StaticResource ClickRow}" BorderBrush="{StaticResource Divider}" BorderThickness="0,0,0,1"
+                                                            MouseEnter="OnItemMouseEnter" MouseLeave="OnItemMouseLeave" Opacity="{Binding RowOpacity}">
+                                                        <DockPanel>
+                                                            <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Done}" VerticalAlignment="Top" Margin="0,8,6,0"
+                                                                      ToolTip="Got it" />
+                                                            <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="30" Height="30" Margin="0,0,8,0" VerticalAlignment="Top">
+                                                                <local:GameIcon FileId="{Binding IconId}" Size="medium" />
+                                                            </Border>
+                                                            <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0" VerticalAlignment="Top">
+                                                                <Button Content="Equip" Style="{StaticResource PillButton}" Padding="6,0"
+                                                                        ToolTip="Put it in its slot and tick it off"
+                                                                        Command="{Binding DataContext.EquipFromUpgradeListCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}" />
+                                                                <Button Content="✕" Style="{StaticResource PillButton}" Padding="6,0" Margin="0,3,0,0" ToolTip="Take it off the list"
+                                                                        Command="{Binding DataContext.RemoveFromUpgradeListCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}" />
+                                                                <Button Style="{StaticResource MapButton}" Margin="0,3,0,0" HorizontalAlignment="Right"
+                                                                        Visibility="{Binding HasMap, Converter={StaticResource BoolToVis}}"
+                                                                        Command="{Binding DataContext.ViewOnMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding SourceText}" />
+                                                            </StackPanel>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding SlotText}" Foreground="{StaticResource Dim}" FontSize="11" />
+                                                                <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="11" TextWrapping="Wrap" />
+                                                            </StackPanel>
+                                                        </DockPanel>
                                                     </Border>
-                                                    <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0" VerticalAlignment="Top">
-                                                        <Button Content="Equip" Style="{StaticResource PillButton}" Padding="6,0"
-                                                                ToolTip="Put it in its slot and tick it off"
-                                                                Command="{Binding DataContext.EquipFromUpgradeListCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}" />
-                                                        <Button Content="✕" Style="{StaticResource PillButton}" Padding="6,0" Margin="0,3,0,0" ToolTip="Take it off the list"
-                                                                Command="{Binding DataContext.RemoveFromUpgradeListCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}" />
-                                                        <Button Style="{StaticResource MapButton}" Margin="0,3,0,0" HorizontalAlignment="Right"
-                                                                Visibility="{Binding HasMap, Converter={StaticResource BoolToVis}}"
-                                                                Command="{Binding DataContext.ViewOnMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding SourceText}" />
-                                                    </StackPanel>
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding SlotText}" Foreground="{StaticResource Dim}" FontSize="11" />
-                                                        <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="11" TextWrapping="Wrap" />
-                                                    </StackPanel>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </DockPanel>
-                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- Upgrades tab before a slot was picked -->
+                            <Border VerticalAlignment="Top" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+                                    BorderThickness="1" CornerRadius="3" Padding="14,12"
+                                    Visibility="{Binding ShowUpgradeHint, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Press Upgrades on a slot to see better items for it, nearest first." FontSize="13"
+                                           Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
+                            </Border>
+
+                            <!-- Upgrade finder: alternatives for one slot -->
+                            <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+                                    BorderThickness="1" CornerRadius="3" Padding="12,10"
+                                    Visibility="{Binding ShowUpgradeFinder, Converter={StaticResource BoolToVis}}">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource PillButton}" Command="{Binding CloseUpgradesCommand}" />
+                                            <TextBlock Text="{Binding UpgradeTitle}" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding UpgradeWeights}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                        <WrapPanel Margin="0,8,0,4">
+                                            <CheckBox Content="Raid" IsChecked="{Binding UpgradeRaid}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
+                                            <CheckBox Content="Dungeon" IsChecked="{Binding UpgradeDungeon}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
+                                            <CheckBox Content="World drops" IsChecked="{Binding UpgradeWorld}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
+                                            <CheckBox Content="{Binding UpgradeArmorLabel}" IsChecked="{Binding UpgradeArmorOnly}" Foreground="{StaticResource Parchment}"
+                                                      ToolTip="Armor slots: only the heaviest armor this class wears at this level (cloaks, jewelry and off hands always show)" />
+                                        </WrapPanel>
+                                        <TextBlock Text="Searching…" FontSize="12" Foreground="{StaticResource Dim}"
+                                                   Visibility="{Binding UpgradeBusy, Converter={StaticResource BoolToVis}}" />
+                                        <TextBlock Text="{Binding UpgradeNote}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Click to open · Equip puts it in this slot · + List saves it for later · hold Alt to compare" FontSize="12"
+                                                   Foreground="{StaticResource Dim}" Opacity="0.8" Margin="0,2,0,6" />
+                                    </StackPanel>
+                                    <ScrollViewer x:Name="UpgradeList" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding Upgrades}" Margin="0,0,14,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Style="{StaticResource ClickRow}" BorderBrush="{StaticResource Divider}" BorderThickness="0,0,0,1"
+                                                            MouseEnter="OnItemMouseEnter" MouseLeave="OnItemMouseLeave">
+                                                        <DockPanel>
+                                                            <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="34" Height="34" Margin="0,0,10,0" VerticalAlignment="Top">
+                                                                <local:GameIcon FileId="{Binding IconId}" Size="medium" />
+                                                            </Border>
+                                                            <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding GainText}" Foreground="{Binding GainBrush}" FontSize="15" HorizontalAlignment="Right" />
+                                                                <Button Content="Equip" Style="{StaticResource PillButton}" Padding="8,1" Margin="0,3,0,0"
+                                                                        Command="{Binding DataContext.EquipUpgradeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}" />
+                                                                <Button Content="+ List" Style="{StaticResource PillButton}" Padding="8,1" Margin="0,3,0,0"
+                                                                        ToolTip="Put it on this gear set's upgrade list, to go and get later"
+                                                                        Command="{Binding DataContext.AddUpgradeToListCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}" />
+                                                                <Button Style="{StaticResource MapButton}" Margin="0,4,0,0" HorizontalAlignment="Right"
+                                                                        Visibility="{Binding HasMap, Converter={StaticResource BoolToVis}}"
+                                                                        Command="{Binding DataContext.ViewOnMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}" />
+                                                            </StackPanel>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding StatLine}" Foreground="{StaticResource Green}" FontSize="12" TextWrapping="Wrap" />
+                                                                <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding LevelText}" Foreground="{StaticResource Dim}" FontSize="12" />
+                                                                <TextBlock Text="{Binding PriceText}" Style="{StaticResource PriceTag}" Margin="0" HorizontalAlignment="Left" />
+                                                            </StackPanel>
+                                                        </DockPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
                     </DockPanel>
-
-                    <!-- Upgrade finder: alternatives for one slot -->
-                    <Border Grid.Column="2" Width="470" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
-                            BorderThickness="1" CornerRadius="3" Padding="12,10"
-                            Visibility="{Binding IsUpgradePanelOpen, Converter={StaticResource BoolToVis}}">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Top">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource PillButton}" Command="{Binding CloseUpgradesCommand}" />
-                                    <TextBlock Text="{Binding UpgradeTitle}" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
-                                </DockPanel>
-                                <TextBlock Text="{Binding UpgradeWeights}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
-                                <WrapPanel Margin="0,8,0,4">
-                                    <CheckBox Content="Raid" IsChecked="{Binding UpgradeRaid}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
-                                    <CheckBox Content="Dungeon" IsChecked="{Binding UpgradeDungeon}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
-                                    <CheckBox Content="World drops" IsChecked="{Binding UpgradeWorld}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
-                                    <CheckBox Content="{Binding UpgradeArmorLabel}" IsChecked="{Binding UpgradeArmorOnly}" Foreground="{StaticResource Parchment}"
-                                              ToolTip="Armor slots: only the heaviest armor this class wears at this level (cloaks, jewelry and off hands always show)" />
-                                </WrapPanel>
-                                <TextBlock Text="Searching…" FontSize="12" Foreground="{StaticResource Dim}"
-                                           Visibility="{Binding UpgradeBusy, Converter={StaticResource BoolToVis}}" />
-                                <TextBlock Text="{Binding UpgradeNote}" FontSize="12" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
-                                <TextBlock Text="Click to open · Equip puts it in this slot · + List saves it for later · hold Alt to compare" FontSize="12"
-                                           Foreground="{StaticResource Dim}" Opacity="0.8" Margin="0,2,0,6" />
-                            </StackPanel>
-                            <ScrollViewer x:Name="UpgradeList" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Upgrades}" Margin="0,0,14,0">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Style="{StaticResource ClickRow}" BorderBrush="{StaticResource Divider}" BorderThickness="0,0,0,1"
-                                                    MouseEnter="OnItemMouseEnter" MouseLeave="OnItemMouseLeave">
-                                                <DockPanel>
-                                                    <Border DockPanel.Dock="Left" Style="{StaticResource IconFrame}" Width="34" Height="34" Margin="0,0,10,0" VerticalAlignment="Top">
-                                                        <local:GameIcon FileId="{Binding IconId}" Size="medium" />
-                                                    </Border>
-                                                    <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding GainText}" Foreground="{Binding GainBrush}" FontSize="15" HorizontalAlignment="Right" />
-                                                        <Button Content="Equip" Style="{StaticResource PillButton}" Padding="8,1" Margin="0,3,0,0"
-                                                                Command="{Binding DataContext.EquipUpgradeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}" />
-                                                        <Button Content="+ List" Style="{StaticResource PillButton}" Padding="8,1" Margin="0,3,0,0"
-                                                                ToolTip="Put it on this gear set's upgrade list, to go and get later"
-                                                                Command="{Binding DataContext.AddUpgradeToListCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}" />
-                                                        <Button Style="{StaticResource MapButton}" Margin="0,4,0,0" HorizontalAlignment="Right"
-                                                                Visibility="{Binding HasMap, Converter={StaticResource BoolToVis}}"
-                                                                Command="{Binding DataContext.ViewOnMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}" />
-                                                    </StackPanel>
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding StatLine}" Foreground="{StaticResource Green}" FontSize="12" TextWrapping="Wrap" />
-                                                        <TextBlock Text="{Binding SourceText}" Foreground="{Binding SourceBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding LevelText}" Foreground="{StaticResource Dim}" FontSize="12" />
-                                                        <TextBlock Text="{Binding PriceText}" Style="{StaticResource PriceTag}" Margin="0" HorizontalAlignment="Left" />
-                                                    </StackPanel>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </DockPanel>
-                    </Border>
                 </Grid>
             </Grid>
 

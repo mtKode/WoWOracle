@@ -87,7 +87,7 @@ before launch).
       close), `/oracle sync`: the Chronicle says "… NPC spots on the map"; map search on it shows the dots.
 
 ## 5i. Upgrade list (app 1.1.22)
-- [ ] Gear → Upgrades on a slot → **+ List** on two items: they show under the gear totals with slot, gain and source.
+- [ ] Gear → Upgrades on a slot → **+ List** on two items: the **Upgrade list (2)** tab shows them with slot, gain and source; the tabs swap between Totals, Upgrades and the list.
 - [ ] Tick one: it greys out and moves down after a refresh; **Clear got** removes it. **Equip** on the other puts it
       in the slot and ticks it. Another gear set has its own (empty) list; restart keeps them.
 

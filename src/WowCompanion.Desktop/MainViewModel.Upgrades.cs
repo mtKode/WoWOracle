@@ -34,8 +34,25 @@ public partial class MainViewModel
     /// <summary>"Plate only", for the set's class and level.</summary>
     [ObservableProperty] private string _upgradeArmorLabel = "Best armor only";
 
-    public bool ShowGearTotals => !IsUpgradePanelOpen;
-    partial void OnIsUpgradePanelOpenChanged(bool value) => OnPropertyChanged(nameof(ShowGearTotals));
+    /// <summary>The right column's tab: 0 gear totals, 1 the upgrade finder, 2 the upgrade list.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowGearTotals), nameof(ShowUpgradeFinder), nameof(ShowUpgradeHint), nameof(ShowUpgradeList),
+        nameof(GearTabTotals), nameof(GearTabUpgrades), nameof(GearTabList))]
+    private int _gearTab;
+
+    public bool ShowGearTotals => GearTab == 0;
+    public bool ShowUpgradeFinder => GearTab == 1 && IsUpgradePanelOpen;
+    public bool ShowUpgradeHint => GearTab == 1 && !IsUpgradePanelOpen;
+    public bool ShowUpgradeList => GearTab == 2;
+    public bool GearTabTotals { get => GearTab == 0; set { if (value) GearTab = 0; } }
+    public bool GearTabUpgrades { get => GearTab == 1; set { if (value) GearTab = 1; } }
+    public bool GearTabList { get => GearTab == 2; set { if (value) GearTab = 2; } }
+
+    partial void OnIsUpgradePanelOpenChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowUpgradeFinder));
+        OnPropertyChanged(nameof(ShowUpgradeHint));
+    }
 
     partial void OnUpgradeRaidChanged(bool value) => _ = RunUpgradesAsync();
     partial void OnUpgradeDungeonChanged(bool value) => _ = RunUpgradesAsync();
@@ -48,6 +65,7 @@ public partial class MainViewModel
         if (row is null) return;
         UpgradeSlot = row;
         IsUpgradePanelOpen = true;
+        GearTab = 1;
         await RunUpgradesAsync();
     }
 
@@ -56,6 +74,7 @@ public partial class MainViewModel
     {
         IsUpgradePanelOpen = false;
         Upgrades.Clear();
+        GearTab = 0;
     }
 
     private async Task RunUpgradesAsync()

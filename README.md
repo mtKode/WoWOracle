@@ -155,7 +155,7 @@ one drops (toggle raid, dungeon and world drops, and **Plate only**: just the he
 set's level, on by default). The nearest come first: quests, vendors, crafting and dungeons,
 then world drops, then gear that needs Honored reputation or more, with raids and other endgame gear (raid
 quests, raid-token quests, PvP rank) last, and **Equip** tries it on. **+ List** puts it on the set's
-**Upgrade list** (under the gear totals): the items you want to go and get, with the slot, the gain and where it comes
+**Upgrade list** (a tab next to *Totals* and *Upgrades* on the right): the items you want to go and get, with the slot, the gain and where it comes
 from; tick them off when you have them (equipping from the list ticks it too), **Clear got** tidies up.
 **Import character** pastes a copy from the addon.
 

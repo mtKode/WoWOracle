@@ -6,7 +6,7 @@ using WowCompanion.Core;
 
 namespace WowCompanion.Desktop;
 
-/// <summary>An item on the gear set's upgrade list (Gear page, under the totals).</summary>
+/// <summary>An item on the gear set's upgrade list (Gear page, the "Upgrade list" tab).</summary>
 public sealed partial class UpgradeListRow(
     int itemId, string name, Brush nameBrush, int iconId, int slot, string slotName, string source, Brush sourceBrush, string gain, bool done)
     : ObservableObject
@@ -37,6 +37,8 @@ public partial class MainViewModel
 
     public ObservableCollection<UpgradeListRow> UpgradeList { get; } = [];
     [ObservableProperty] private string _upgradeListSummary = "";
+    /// <summary>"Upgrade list (3)": items still to get.</summary>
+    [ObservableProperty] private string _upgradeListTabText = "Upgrade list";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(UpgradeListEmpty))] private bool _hasUpgradeList;
     public bool UpgradeListEmpty => !HasUpgradeList;
     [ObservableProperty] private bool _hasDoneUpgrades;
@@ -75,6 +77,8 @@ public partial class MainViewModel
         var done = UpgradeList.Count(r => r.Done);
         HasUpgradeList = UpgradeList.Count > 0;
         HasDoneUpgrades = done > 0;
+        var left = UpgradeList.Count - done;
+        UpgradeListTabText = left > 0 ? $"Upgrade list ({left})" : "Upgrade list";
         UpgradeListSummary = UpgradeList.Count == 0 ? ""
             : done == 0 ? $"{UpgradeList.Count} to get"
             : $"{done} of {UpgradeList.Count} got";
