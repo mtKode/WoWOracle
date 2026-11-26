@@ -153,8 +153,10 @@ chat. Show one tree at a time or all three; they grow with the window.
 **Upgrades** on a slot lists better items for it, scored by the stats your set already leans on, with where each
 one drops (toggle raid, dungeon and world drops). The nearest come first: quests, vendors, crafting and dungeons,
 then world drops, then gear that needs Honored reputation or more, with raids and other endgame gear (raid
-quests, raid-token quests, PvP rank) last, and **Equip** tries it on. **Import character** pastes a copy
-from the addon.
+quests, raid-token quests, PvP rank) last, and **Equip** tries it on. **+ List** puts it on the set's
+**Upgrade list** (under the gear totals): the items you want to go and get, with the slot, the gain and where it comes
+from; tick them off when you have them (equipping from the list ticks it too), **Clear got** tidies up.
+**Import character** pastes a copy from the addon.
 
 ### Calculator (Ctrl+7)
 Pick class, race, level, a gear set and a talent set, add buffs and consumables, choose a target level, and see

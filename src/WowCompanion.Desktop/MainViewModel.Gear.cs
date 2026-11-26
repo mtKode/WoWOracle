@@ -101,6 +101,7 @@ public partial class MainViewModel
     {
         if (SelectedGearSet is not { } set) return;
         _gearSets.Delete(set.Id);
+        _upgradeList.RemoveSet(set.Id);
         ReloadGearSets(null);
         Toast($"Deleted {set.Name}.");
     }
@@ -194,6 +195,7 @@ public partial class MainViewModel
     {
         GearRows.Clear();
         GearTotals.Clear();
+        RefreshUpgradeList();
         if (_calcData is null || SelectedGearSet is not { } set) return;
 
         var slots = _gearSets.GetItems(set.Id);

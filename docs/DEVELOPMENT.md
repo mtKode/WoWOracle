@@ -132,6 +132,8 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   tier 3), items with a PvP rank (`item_requirements`, from the dump's `item_template`, game data schema 35), and
   anything above the best dungeon item level among the candidates (at least level + 5), sorted by item level so
   Molten Core leads Naxxramas. Reputation: `quests.rep_value` (RequiredMinRepValue) and `item_requirements.rep_rank`.
+- **Upgrade list** (`upgrade_list` in user.sqlite: set, item, slot, source and gain as shown when added, done;
+  `UpgradeListService`): per gear set, removed with the set.
 - **Map search** (`map_places`, `MapService.Search`): subzones (AreaTable with a parent) at the middle of their
   explored-area patch (`WorldMapOverlay.AreaID_0-3`), towns and landmarks (`AreaPOI`) and flight masters (`TaxiNodes`)
   from their world position, which win over a patch centre; NPCs from `npcs`. A subzone without a spot borrows one

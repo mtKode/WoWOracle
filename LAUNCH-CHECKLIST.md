@@ -86,6 +86,11 @@ before launch).
 - [ ] In a Forever zone, walk up to a few of the same Forever mob in different places (target or mouse over them up
       close), `/oracle sync`: the Chronicle says "… NPC spots on the map"; map search on it shows the dots.
 
+## 5i. Upgrade list (app 1.1.22)
+- [ ] Gear → Upgrades on a slot → **+ List** on two items: they show under the gear totals with slot, gain and source.
+- [ ] Tick one: it greys out and moves down after a refresh; **Clear got** removes it. **Equip** on the other puts it
+      in the slot and ticks it. Another gear set has its own (empty) list; restart keeps them.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

@@ -188,6 +188,7 @@ public partial class MainWindow : FluentWindow
             if (LootBossesList.SelectedItem is { } item) LootBossesList.ScrollIntoView(item);
         };
         UpgradeList.PreviewMouseLeftButtonUp += OnItemListClicked;
+        WantList.PreviewMouseLeftButtonUp += OnItemListClicked;
 
         // Reminders pop from the tray too, so they reach you while the window is hidden.
         viewModel.ReminderDue += OnReminderDue;
@@ -381,6 +382,7 @@ public partial class MainWindow : FluentWindow
             GearSlotRow gear => gear.ItemId,
             ItemRow item => item.Id,
             UpgradeRow up => up.ItemId,
+            UpgradeListRow listed => listed.ItemId,
             QuestRewardRow reward => reward.ItemId,
             PlanMaterialRow material => material.ItemId,
             _ => 0,
@@ -602,6 +604,7 @@ public partial class MainWindow : FluentWindow
             {
                 ItemRow row => (row.Id, row.Name),
                 UpgradeRow up => (up.ItemId, up.Name),
+                UpgradeListRow listed => (listed.ItemId, listed.Name),
                 _ => (0, ""),
             };
             if (id == 0) continue;

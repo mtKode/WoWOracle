@@ -170,6 +170,18 @@ public static class UserDatabase
             PRIMARY KEY (npc_id, zone, x, y)
         );
         """,
+        """
+        CREATE TABLE upgrade_list (
+            set_id INTEGER NOT NULL,
+            item_id INTEGER NOT NULL,
+            slot INTEGER NOT NULL,
+            source TEXT NOT NULL,
+            gain TEXT NOT NULL,
+            done INTEGER NOT NULL DEFAULT 0,
+            added_utc TEXT NOT NULL,
+            PRIMARY KEY (set_id, item_id)
+        );
+        """,
     ];
 
     public static void Initialize(string path)
