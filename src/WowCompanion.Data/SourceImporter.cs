@@ -30,8 +30,13 @@ public static class SourceImporter
             giver_kind TEXT NOT NULL DEFAULT '', giver_id INTEGER NOT NULL DEFAULT 0,
             prev_quest INTEGER NOT NULL DEFAULT 0, next_in_chain INTEGER NOT NULL DEFAULT 0,
             races INTEGER NOT NULL DEFAULT 0, classes INTEGER NOT NULL DEFAULT 0, skill INTEGER NOT NULL DEFAULT 0,
-            type INTEGER NOT NULL DEFAULT 0, details TEXT NOT NULL DEFAULT '', objectives TEXT NOT NULL DEFAULT ''
+            type INTEGER NOT NULL DEFAULT 0, details TEXT NOT NULL DEFAULT '', objectives TEXT NOT NULL DEFAULT '',
+            -- RequiredMinRepValue (3000 Friendly, 9000 Honored, 21000 Revered, 42000 Exalted); endgame = 1 for a raid quest,
+            -- one in a raid zone, or one asking for items that drop in raids (tier 3 tokens, Ahn'Qiraj, Zul'Gurub coins).
+            rep_value INTEGER NOT NULL DEFAULT 0, endgame INTEGER NOT NULL DEFAULT 0
         );
+        -- Items that need a reputation rank (5 Honored, 6 Revered, 7 Exalted) or a PvP rank to buy or use.
+        CREATE TABLE item_requirements (item_id INTEGER PRIMARY KEY, rep_rank INTEGER NOT NULL, honor_rank INTEGER NOT NULL);
         CREATE INDEX quests_zone ON quests (zone);
         CREATE TABLE maps (id INTEGER PRIMARY KEY, name TEXT NOT NULL, instance_type INTEGER NOT NULL);
         CREATE TABLE areas (id INTEGER PRIMARY KEY, name TEXT NOT NULL, map INTEGER NOT NULL DEFAULT -1);
@@ -56,13 +61,14 @@ public static class SourceImporter
         "gameobject", "gameobject_loot_template", "npc_vendor", "npc_vendor_template", "quest_template",
         "creature_questrelation", "gameobject_questrelation", "item_loot_template", "pickpocketing_loot_template",
         "skinning_loot_template", "fishing_loot_template", "npc_trainer", "npc_trainer_template",
-        "spell_template", "creature_spawn_entry",
+        "spell_template", "creature_spawn_entry", "item_template",
     ];
 
     /// <summary>Big tables of which only some rows matter: spell_template only for its "learn a spell" spells.</summary>
     private static readonly Dictionary<string, Func<Table, string[], bool>> KeepRow = new()
     {
         ["spell_template"] = (t, r) => LearnEffect(t, r) > 0,
+        ["item_template"] = (t, r) => t.Int(r, "RequiredReputationRank") > 0 || t.Int(r, "requiredhonorrank") > 0,
     };
 
     /// <summary>The spell a Classic spell teaches (effect 36, LEARN_SPELL), or 0.</summary>
@@ -184,8 +190,8 @@ public static class SourceImporter
         Insert(connection, transaction,
             """
             INSERT OR REPLACE INTO quests (id, title, level, min_level, zone, giver, giver_kind, giver_id,
-                                           prev_quest, next_in_chain, races, classes, skill, type, details, objectives)
-            VALUES ($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p)
+                                           prev_quest, next_in_chain, races, classes, skill, type, details, objectives, rep_value)
+            VALUES ($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p, $q)
             """,
             quests.Rows.Select(r =>
             {
@@ -198,6 +204,7 @@ public static class SourceImporter
                     quests.Int(r, "PrevQuestId"), quests.Int(r, "NextQuestInChain"), quests.Int(r, "RequiredRaces"),
                     quests.Int(r, "RequiredClasses"), quests.Int(r, "RequiredSkill"), quests.Int(r, "Type"),
                     quests.Get(r, "Details"), quests.Get(r, "Objectives"),
+                    quests.Int(r, "RequiredMinRepFaction") > 0 ? quests.Int(r, "RequiredMinRepValue") : 0,
                 };
             }));
 
@@ -307,6 +314,31 @@ public static class SourceImporter
             // The same item can be reached twice (directly and through a reference): keep the better chance.
             sources.GroupBy(s => ((int)s[0], (string)s[1], (int)s[2]))
                 .Select(g => g.OrderByDescending(s => (double)s[3]).First()));
+
+        // ----- what makes gear hard to get: reputation, PvP rank, raids -----
+        var requirements = T("item_template");
+        Insert(connection, transaction, "INSERT OR REPLACE INTO item_requirements (item_id, rep_rank, honor_rank) VALUES ($a, $b, $c)",
+            requirements.Rows.Select(r => new object[]
+            {
+                requirements.Int(r, "entry"), requirements.Int(r, "RequiredReputationRank"), requirements.Int(r, "requiredhonorrank"),
+            }));
+        Execute(connection, transaction, "CREATE TEMP TABLE quest_items (quest INTEGER NOT NULL, item INTEGER NOT NULL)");
+        Insert(connection, transaction, "INSERT INTO temp.quest_items (quest, item) VALUES ($a, $b)",
+            quests.Rows.SelectMany(r => Enumerable.Range(1, 4)
+                .Select(i => quests.Int(r, $"ReqItemId{i}"))
+                .Where(item => item > 0)
+                .Select(item => new object[] { quests.Int(r, "entry"), item })));
+        Execute(connection, transaction, """
+            CREATE INDEX temp.quest_items_item ON quest_items (item);
+            UPDATE quests SET endgame = 1
+            WHERE type = 62
+               OR zone IN (SELECT a.id FROM areas a JOIN maps m ON m.id = a.map WHERE m.instance_type = 2)
+               OR id IN (SELECT qi.quest FROM temp.quest_items qi
+                         JOIN item_sources s ON s.item_id = qi.item AND s.kind = 'drop'
+                         JOIN npcs n ON n.id = s.ref_id JOIN maps m ON m.id = n.map
+                         WHERE m.instance_type = 2);
+            DROP TABLE temp.quest_items;
+            """);
         return sources.Count;
     }
 
@@ -418,12 +450,20 @@ public static class SourceImporter
             return (onMap.Key, spawns.Real(first, "position_x"), spawns.Real(first, "position_y"));
         });
 
+    private static void Execute(SqliteConnection connection, SqliteTransaction transaction, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+
     private static void Insert(SqliteConnection connection, SqliteTransaction transaction, string sql, IEnumerable<object[]> rows)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = sql;
-        string[] names = ["$a", "$b", "$c", "$d", "$e", "$f", "$g", "$h", "$i", "$j", "$k", "$l", "$m", "$n", "$o", "$p"];
+        string[] names = ["$a", "$b", "$c", "$d", "$e", "$f", "$g", "$h", "$i", "$j", "$k", "$l", "$m", "$n", "$o", "$p", "$q"];
         var parameters = names.Where(sql.Contains).Select(n => command.Parameters.AddWithValue(n, DBNull.Value)).ToArray();
         foreach (var row in rows)
         {

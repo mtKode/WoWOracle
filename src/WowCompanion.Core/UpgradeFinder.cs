@@ -6,7 +6,13 @@ namespace WowCompanion.Core;
 /// <summary>Where an item mostly comes from, boiled down to one line and a difficulty bucket.</summary>
 public enum SourceKind { Unknown, Quest, Vendor, Crafted, Dungeon, Raid, WorldDrop, Other }
 
-public sealed record SourceSummary(SourceKind Kind, string Text);
+public sealed record SourceSummary(SourceKind Kind, string Text)
+{
+    /// <summary>Needs a raid: a raid quest or one asking for raid drops, or a PvP rank.</summary>
+    public bool Endgame { get; init; }
+    /// <summary>Needs Honored reputation or more.</summary>
+    public bool Reputation { get; init; }
+}
 
 public sealed record UpgradeOption(
     int ItemId, string Name, int Quality, int IconId, int ItemLevel, int RequiredLevel,
@@ -134,10 +140,10 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         var dungeonTop = meta.Where(m => sources.GetValueOrDefault(m.Key)?.Kind == SourceKind.Dungeon)
             .Select(m => m.Value.ItemLevel).DefaultIfEmpty(0).Max();
         var easyTop = Math.Max(dungeonTop, request.Level + 5);
-        bool Endgame(UpgradeOption o) => o.Source.Kind == SourceKind.Raid || o.ItemLevel > easyTop;
+        bool Endgame(UpgradeOption o) => Effort(o.Source) == 4 || o.ItemLevel > easyTop;
         var ordered = options
             .OrderBy(o => o.Score > currentScore * 1.005 || currentScore <= 0 ? 0 : 1)
-            .ThenBy(o => Endgame(o) ? 3 : Effort(o.Source.Kind))
+            .ThenBy(o => Endgame(o) ? 4 : Effort(o.Source))
             .ThenBy(o => Endgame(o) ? o.ItemLevel : 0)
             .ThenByDescending(o => o.Score)
             .Take(request.Limit)
@@ -145,19 +151,50 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
             .ToList();
 
         var note = basedOnSet
-            ? "Easiest first: quests, vendors, crafting and dungeons, then world drops, raids and other endgame gear last."
+            ? "Easiest first: quests, vendors, crafting and dungeons, then world drops, then gear that needs Honored reputation or more, raids and other endgame gear last."
             : "The set is empty, so items are ranked by total stats.";
         return new UpgradeResult(ordered, weightedBy, note);
     }
 
-    /// <summary>How far away an item is: 0 quest / vendor / crafted / dungeon, 1 world drop, 2 unknown, 3 raid.</summary>
-    private static int Effort(SourceKind kind) => kind switch
+    /// <summary>
+    /// How far away an item is: 0 quest / vendor / crafted / dungeon, 1 world drop, 2 unknown, 3 Honored reputation or
+    /// more, 4 endgame (see Find).
+    /// </summary>
+    private static int Effort(SourceSummary source) => source.Kind == SourceKind.Raid || source.Endgame ? 4
+        : source.Reputation ? 3
+        : source.Kind switch
+        {
+            SourceKind.Quest or SourceKind.Vendor or SourceKind.Crafted or SourceKind.Dungeon => 0,
+            SourceKind.WorldDrop or SourceKind.Other => 1,
+            _ => 2,
+        };
+
+    private const int HonoredRank = 5;
+
+    /// <summary>Reputation rank (4 Friendly ... 7 Exalted) from a quest's RequiredMinRepValue.</summary>
+    private static int RepRank(int value) => value >= 42000 ? 7 : value >= 21000 ? 6 : value >= 9000 ? 5 : value >= 3000 ? 4 : 0;
+
+    private static string RankName(int rank) => rank switch { 5 => "Honored", 6 => "Revered", 7 => "Exalted", _ => "Friendly" };
+
+    /// <summary>Reputation rank and PvP rank an item needs (item_requirements, game data schema 35).</summary>
+    private static Dictionary<int, (int Rep, int Honor)> Requirements(SqliteConnection connection, IReadOnlyList<int> itemIds)
     {
-        SourceKind.Quest or SourceKind.Vendor or SourceKind.Crafted or SourceKind.Dungeon => 0,
-        SourceKind.WorldDrop or SourceKind.Other => 1,
-        SourceKind.Raid => 3,
-        _ => 2,
-    };
+        var result = new Dictionary<int, (int, int)>();
+        if (!TableExists(connection, "item_requirements")) return result;
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT item_id, rep_rank, honor_rank FROM item_requirements WHERE item_id IN {In(command, itemIds)}";
+        using var r = command.ExecuteReader();
+        while (r.Read()) result[r.GetInt32(0)] = (r.GetInt32(1), r.GetInt32(2));
+        return result;
+    }
+
+    private static bool HasColumn(SqliteConnection connection, string table, string column)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT 1 FROM pragma_table_info('{table}') WHERE name = $c";
+        command.Parameters.AddWithValue("$c", column);
+        return command.ExecuteScalar() is not null;
+    }
 
     // ----- scoring -----
 
@@ -355,14 +392,16 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         using var connection = Open();
         if (!TableExists(connection, "item_sources")) return result;
 
-        var rows = new List<(int Item, string Kind, string Name, string Place, int InstanceType, double Chance, string Giver, string GiverPlace)>();
+        var rows = new List<(int Item, string Kind, string Name, string Place, int InstanceType, double Chance, string Giver, string GiverPlace, bool RaidQuest, int QuestRep)>();
+        var needs = Requirements(connection, itemIds);
         using (var command = connection.CreateCommand())
         {
             command.CommandText = $"""
                 SELECT s.item_id, s.kind, COALESCE(n.name, q.title, o.name, ''), COALESCE(m.name, qa.name, ''),
                        COALESCE(m.instance_type, 0), s.chance, COALESCE(q.giver, ''),
                        COALESCE(n.zone, o.zone, ''), COALESCE(n.zone_x, o.zone_x, 0), COALESCE(n.zone_y, o.zone_y, 0),
-                       COALESCE(gn.zone, go.zone, ''), COALESCE(gn.zone_x, go.zone_x, 0), COALESCE(gn.zone_y, go.zone_y, 0)
+                       COALESCE(gn.zone, go.zone, ''), COALESCE(gn.zone_x, go.zone_x, 0), COALESCE(gn.zone_y, go.zone_y, 0),
+                       {(HasColumn(connection, "quests", "endgame") ? "COALESCE(q.endgame, 0), COALESCE(q.rep_value, 0)" : "0, 0")}
                 FROM item_sources s
                 LEFT JOIN npcs n ON s.kind IN ('drop', 'vendor', 'pickpocket', 'skinning') AND n.id = s.ref_id
                 LEFT JOIN quests q ON s.kind IN ('quest', 'quest_choice') AND q.id = s.ref_id
@@ -378,13 +417,15 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
                 rows.Add((r.GetInt32(0), r.GetString(1), r.GetString(2),
                     ItemSearchService.Location(r.GetString(7), r.GetDouble(8), r.GetDouble(9), r.GetString(3)),
                     r.GetInt32(4), r.GetDouble(5), r.GetString(6),
-                    ItemSearchService.Location(r.GetString(10), r.GetDouble(11), r.GetDouble(12), r.GetString(3))));
+                    ItemSearchService.Location(r.GetString(10), r.GetDouble(11), r.GetDouble(12), r.GetString(3)),
+                    r.GetInt32(13) == 1, r.GetInt32(14)));
         }
 
         foreach (var group in rows.GroupBy(x => x.Item))
         {
             var list = group.ToList();
-            var quest = list.FirstOrDefault(x => x.Kind is "quest" or "quest_choice");
+            // A quest anyone can do beats one that needs a raid or reputation.
+            var quest = list.Where(x => x.Kind is "quest" or "quest_choice").OrderBy(x => x.RaidQuest).ThenBy(x => x.QuestRep).FirstOrDefault();
             var vendor = list.FirstOrDefault(x => x.Kind == "vendor");
             var drops = list.Where(x => x.Kind == "drop").ToList();
             SourceSummary summary;
@@ -415,7 +456,18 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
                     _ => char.ToUpperInvariant(other.Kind[0]) + other.Kind[1..],
                 });
             }
-            result[group.Key] = summary;
+            var (repRank, honorRank) = needs.GetValueOrDefault(group.Key);
+            var endgame = honorRank > 0 || (quest.Name is { Length: > 0 } && quest.RaidQuest);
+            var repNeeded = Math.Max(RepRank(quest.Name is { Length: > 0 } ? quest.QuestRep : 0), repRank);
+            var extra = honorRank > 0 ? $" · PvP rank {honorRank}"
+                : endgame ? " · raid"
+                : repNeeded >= HonoredRank ? $" · needs {RankName(repNeeded)}" : "";
+            result[group.Key] = summary with
+            {
+                Text = summary.Text + extra,
+                Endgame = endgame,
+                Reputation = repNeeded >= HonoredRank,
+            };
         }
 
         // Crafted items: anything a recipe makes and nothing else gives.
