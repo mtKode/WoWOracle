@@ -27,8 +27,9 @@ public sealed record UpgradeResult(IReadOnlyList<UpgradeOption> Options, IReadOn
 
 /// <summary>
 /// Alternatives for one gear slot. Items are scored by the stats the gear set already leans on (each stat priced by
-/// roughly what it costs on an item, so 1% crit counts like 14 Strength). Several options are returned, not just the
-/// best, each with where it comes from, because the best piece is often a raid drop.
+/// roughly what it costs on an item, so 1% crit counts like 14 Strength). Several options are returned, each with where
+/// it comes from, the nearest first: the best piece is often a raid drop, but what you can get next is a quest or a
+/// dungeon.
 /// </summary>
 public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
 {
@@ -121,13 +122,42 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
             if (!request.IncludeWorld && source.Kind == SourceKind.WorldDrop) continue;
             var (itemLevel, requiredLevel) = meta.GetValueOrDefault(item.Id);
             options.Add(new UpgradeOption(item.Id, item.Name, item.Quality, item.IconId, itemLevel, requiredLevel,
-                score, currentScore, source, StatText(request.ClassId, item, effects)));
-            if (options.Count >= request.Limit) break;
+                score, currentScore, source, ""));
         }
+        var byId = scored.GroupBy(x => x.Item.Id).ToDictionary(g => g.Key, g => g.First().Item);
 
-        var note = basedOnSet ? "" : "The set is empty, so items are ranked by total stats.";
-        return new UpgradeResult(options, weightedBy, note);
+        // The nearest upgrades first: what's easiest to get (quests, vendors, crafting, dungeons), then world drops,
+        // then items with no known source, endgame last, the lowest item level first (Molten Core before Naxxramas).
+        // Endgame is raid drops and anything above the best dungeon item at this level: raid-token quests (tier 3,
+        // Ahn'Qiraj), PvP rank vendors, crafts from raid materials. Within a group the bigger gain leads. Items no
+        // better than what's worn come after all upgrades.
+        var dungeonTop = meta.Where(m => sources.GetValueOrDefault(m.Key)?.Kind == SourceKind.Dungeon)
+            .Select(m => m.Value.ItemLevel).DefaultIfEmpty(0).Max();
+        var easyTop = Math.Max(dungeonTop, request.Level + 5);
+        bool Endgame(UpgradeOption o) => o.Source.Kind == SourceKind.Raid || o.ItemLevel > easyTop;
+        var ordered = options
+            .OrderBy(o => o.Score > currentScore * 1.005 || currentScore <= 0 ? 0 : 1)
+            .ThenBy(o => Endgame(o) ? 3 : Effort(o.Source.Kind))
+            .ThenBy(o => Endgame(o) ? o.ItemLevel : 0)
+            .ThenByDescending(o => o.Score)
+            .Take(request.Limit)
+            .Select(o => o with { StatLine = StatText(request.ClassId, byId[o.ItemId], effects) }) // only for the shown ones
+            .ToList();
+
+        var note = basedOnSet
+            ? "Easiest first: quests, vendors, crafting and dungeons, then world drops, raids and other endgame gear last."
+            : "The set is empty, so items are ranked by total stats.";
+        return new UpgradeResult(ordered, weightedBy, note);
     }
+
+    /// <summary>How far away an item is: 0 quest / vendor / crafted / dungeon, 1 world drop, 2 unknown, 3 raid.</summary>
+    private static int Effort(SourceKind kind) => kind switch
+    {
+        SourceKind.Quest or SourceKind.Vendor or SourceKind.Crafted or SourceKind.Dungeon => 0,
+        SourceKind.WorldDrop or SourceKind.Other => 1,
+        SourceKind.Raid => 3,
+        _ => 2,
+    };
 
     // ----- scoring -----
 

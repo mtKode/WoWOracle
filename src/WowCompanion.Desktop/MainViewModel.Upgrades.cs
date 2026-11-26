@@ -99,8 +99,8 @@ public partial class MainViewModel
             UpgradeWeights = result.WeightedBy.Count > 0
                 ? $"{className} level {set.Level} · weighted by {string.Join(", ", result.WeightedBy)}"
                 : $"{className} level {set.Level}";
-            UpgradeNote = result.Note.Length > 0 ? result.Note
-                : Upgrades.Count == 0 ? "Nothing found with these filters." : "";
+            UpgradeNote = Upgrades.Count == 0 && result.Options.Count == 0 && result.Note.StartsWith("Easiest", StringComparison.Ordinal)
+                ? "Nothing found with these filters." : result.Note;
         }
         catch (Exception ex)
         {

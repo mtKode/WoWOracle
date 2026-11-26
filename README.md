@@ -150,8 +150,9 @@ chat. Show one tree at a time or all three; they grow with the window.
 
 ### Gear (Ctrl+6)
 **Gear sets**: put items in slots and see the totals. **Enchant** on an item picks an enchant, oil or kit for it.
-**Upgrades** on a slot lists better items for it, ranked by the stats your set already leans on, with where each
-one drops (toggle raid, dungeon and world drops), and **Equip** tries it on. **Import character** pastes a copy
+**Upgrades** on a slot lists better items for it, scored by the stats your set already leans on, with where each
+one drops (toggle raid, dungeon and world drops). The nearest come first: quests, vendors, crafting and dungeons,
+then world drops, with raids and other endgame gear (raid-token quests, PvP rank) last, and **Equip** tries it on. **Import character** pastes a copy
 from the addon.
 
 ### Calculator (Ctrl+7)

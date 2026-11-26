@@ -126,7 +126,9 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   stat 42 is spell damage only. Not yet: procs, glancing/dodge/parry, "% of mana" talents, healing-received
   modifiers.
 - **Upgrades**: alternatives ranked by the stats the set already leans on (stat budget prices, e.g. 1% crit = 14
-  points), filtered by proficiency and level.
+  points), filtered by proficiency and level. Order: upgrades before the rest, then effort (quest / vendor / crafted /
+  dungeon, world drop, unknown, endgame), the bigger gain first. Endgame = raid drops and anything above the best
+  dungeon item level among the candidates (at least level + 5), sorted by item level so Molten Core leads Naxxramas.
 - **Map search** (`map_places`, `MapService.Search`): subzones (AreaTable with a parent) at the middle of their
   explored-area patch (`WorldMapOverlay.AreaID_0-3`), towns and landmarks (`AreaPOI`) and flight masters (`TaxiNodes`)
   from their world position, which win over a patch centre; NPCs from `npcs`. A subzone without a spot borrows one
