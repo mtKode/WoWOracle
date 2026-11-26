@@ -18,7 +18,8 @@ public static class SourceImporter
         CREATE TABLE npcs (
             id INTEGER PRIMARY KEY, name TEXT NOT NULL, subname TEXT NOT NULL,
             min_level INTEGER NOT NULL, max_level INTEGER NOT NULL, rank INTEGER NOT NULL, map INTEGER NOT NULL,
-            zone TEXT NOT NULL DEFAULT '', zone_x REAL NOT NULL DEFAULT 0, zone_y REAL NOT NULL DEFAULT 0
+            zone TEXT NOT NULL DEFAULT '', zone_x REAL NOT NULL DEFAULT 0, zone_y REAL NOT NULL DEFAULT 0,
+            side TEXT NOT NULL DEFAULT ''   -- 'Alliance' or 'Horde' when only that side may deal with it, else ''
         );
         CREATE TABLE objects (
             id INTEGER PRIMARY KEY, name TEXT NOT NULL, type INTEGER NOT NULL, map INTEGER NOT NULL,
@@ -122,8 +123,9 @@ public static class SourceImporter
         // ----- creatures -----
         var npcs = T("creature_template");
         var npcSpawn = MainSpawn(T("creature"), "id");
+        var sides = csv is null ? [] : FactionSides(csv("FactionTemplate"));
         Insert(connection, transaction,
-            "INSERT OR REPLACE INTO npcs (id, name, subname, min_level, max_level, rank, map, zone, zone_x, zone_y) VALUES ($a, $b, $c, $d, $e, $f, $g, $h, $i, $j)",
+            "INSERT OR REPLACE INTO npcs (id, name, subname, min_level, max_level, rank, map, zone, zone_x, zone_y, side) VALUES ($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k)",
             npcs.Rows.Select(r =>
             {
                 var id = npcs.Int(r, "Entry");
@@ -132,7 +134,7 @@ public static class SourceImporter
                 return new object[]
                 {
                     id, npcs.Get(r, "Name"), npcs.Get(r, "SubName"), npcs.Int(r, "MinLevel"), npcs.Int(r, "MaxLevel"),
-                    npcs.Int(r, "Rank"), map, zone, zx, zy,
+                    npcs.Int(r, "Rank"), map, zone, zx, zy, sides.GetValueOrDefault(npcs.Int(r, "Faction"), ""),
                 };
             }));
 
@@ -340,6 +342,23 @@ public static class SourceImporter
             DROP TABLE temp.quest_items;
             """);
         return sources.Count;
+    }
+
+    /// <summary>
+    /// The side of each faction template (client FactionTemplate): "Alliance" when its own or friendly group is the
+    /// Alliance (FactionGroup / FriendGroup bit 2) and not the Horde (bit 4), and the other way round; others neutral.
+    /// </summary>
+    private static Dictionary<int, string> FactionSides(string path)
+    {
+        var sides = new Dictionary<int, string>();
+        if (!File.Exists(path)) return sides;
+        foreach (var r in CsvTable.Read(path))
+        {
+            var groups = r.GetInt("FactionGroup") | r.GetInt("FriendGroup");
+            var (alliance, horde) = ((groups & 2) != 0, (groups & 4) != 0);
+            if (alliance != horde) sides[r.GetInt("ID")] = alliance ? "Alliance" : "Horde";
+        }
+        return sides;
     }
 
     /// <summary>

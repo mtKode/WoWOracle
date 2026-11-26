@@ -133,6 +133,10 @@ planner; items seen in game (gear sets, learned items, quest rewards) are taken 
   tier 3), items with a PvP rank (`item_requirements`, from the dump's `item_template`, game data schema 35), and
   anything above the best dungeon item level among the candidates (at least level + 5), sorted by item level so
   Molten Core leads Naxxramas. Reputation: `quests.rep_value` (RequiredMinRepValue) and `item_requirements.rep_rank`.
+  Faction (`OwnSideOnly`, the set's race): items whose `allowable_race` leaves the race out are skipped; quest
+  sources whose `races` or giver's side is the other faction's, and vendors on the other side, don't count, and an
+  item with only those is left out. `npcs.side` comes from the NPC's faction template (client `FactionTemplate`,
+  FactionGroup / FriendGroup bit 2 Alliance, 4 Horde; game data schema 36).
 - **Upgrade list** (`upgrade_list` in user.sqlite: set, item, slot, source and gain as shown when added, done;
   `UpgradeListService`): per gear set, removed with the set.
 - **Map search** (`map_places`, `MapService.Search`): subzones (AreaTable with a parent) at the middle of their

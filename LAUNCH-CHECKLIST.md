@@ -91,6 +91,11 @@ before launch).
 - [ ] Tick one: it greys out and moves down after a refresh; **Clear got** removes it. **Equip** on the other puts it
       in the slot and ticks it. Another gear set has its own (empty) list; restart keeps them.
 
+## 5j. Faction filter (app 1.1.25)
+- [ ] First start rebuilds the game data (schema 36). Upgrades on the head of a level 60 Horde paladin or warrior:
+      **Horde only** is ticked and Helm of Heroism comes from Mokvar (Orgrimmar), with no Soulforge Helm (Ironforge);
+      untick it and the Alliance quests show too. An Alliance set says **Alliance only**.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

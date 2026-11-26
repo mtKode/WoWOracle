@@ -34,6 +34,8 @@ public static partial class GameDatabaseBuilder
         "SpellItemEnchantment", "SpellEquippedItems",
         // zone coordinates for NPCs and quest givers ("Westfall (56, 47)")
         "UiMap", "UiMapAssignment",
+        // which side an NPC is on (Alliance / Horde vendors and quest givers)
+        "FactionTemplate",
         // item icons for items whose Item row has none (newer items keep it on their appearance)
         "ItemModifiedAppearance", "ItemAppearance",
         // zone map pictures (Map page): which tiles make up each map

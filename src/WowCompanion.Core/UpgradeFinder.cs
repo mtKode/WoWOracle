@@ -12,6 +12,8 @@ public sealed record SourceSummary(SourceKind Kind, string Text)
     public bool Endgame { get; init; }
     /// <summary>Needs Honored reputation or more.</summary>
     public bool Reputation { get; init; }
+    /// <summary>Every source is for the other faction (Horde quests, Alliance vendors ...).</summary>
+    public bool OtherSideOnly { get; init; }
 }
 
 public sealed record UpgradeOption(
@@ -25,7 +27,7 @@ public sealed record UpgradeOption(
 public sealed record UpgradeRequest(
     int Slot, int ClassId, int Level, IReadOnlyList<GearItem> SetItems, GearItem? Current,
     bool IncludeRaid = true, bool IncludeDungeon = true, bool IncludeWorld = true, int Limit = 25,
-    bool BestArmorOnly = true);
+    bool BestArmorOnly = true, int RaceId = 0, bool OwnSideOnly = true);
 
 /// <summary>A quest reward that beats what the set wears in <see cref="Slot"/>.</summary>
 public sealed record RewardUpgrade(UpgradeOption Option, int Slot, int QuestId, string QuestTitle);
@@ -117,13 +119,18 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
 
         var currentScore = current is null ? 0 : Score(current);
         var scored = items.Select(i => (Item: i, Score: Score(i))).Where(x => x.Score > 0).OrderByDescending(x => x.Score).ToList();
-        var sources = Sources(scored.Select(x => x.Item.Id).ToList());
+        // Your side: quests and vendors only the other faction has don't count as a source; an item with sources but
+        // none of them yours is left out ("Alliance only").
+        var raceBit = request.RaceId > 0 ? 1 << (request.RaceId - 1) : 0;
+        var side = request.OwnSideOnly && raceBit > 0 ? QuestService.SideOf(raceBit) : "";
+        var sources = Sources(scored.Select(x => x.Item.Id).ToList(), side, raceBit);
 
         var meta = Meta(scored.Select(x => x.Item.Id).ToList());
         var options = new List<UpgradeOption>();
         foreach (var (item, score) in scored)
         {
             var source = sources.GetValueOrDefault(item.Id) ?? new SourceSummary(SourceKind.Unknown, "Source unknown");
+            if (source.OtherSideOnly) continue;
             if (!request.IncludeRaid && source.Kind == SourceKind.Raid) continue;
             if (!request.IncludeDungeon && source.Kind == SourceKind.Dungeon) continue;
             if (!request.IncludeWorld && source.Kind == SourceKind.WorldDrop) continue;
@@ -341,7 +348,7 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         using var command = connection.CreateCommand();
         var typeList = string.Join(',', types);
         command.CommandText = $"""
-            SELECT id, class_id, subclass_id, inventory_type, allowable_class FROM items
+            SELECT id, class_id, subclass_id, inventory_type, allowable_class, allowable_race FROM items
             WHERE inventory_type IN ({typeList}) AND {UsableBy("items")} AND quality >= 2 AND {ItemVisibility.Clause("id")}
             ORDER BY item_level DESC LIMIT 1500
             """;
@@ -352,6 +359,9 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         {
             var (id, cls, sub, inv, allow) = (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4));
             if (allow > 0 && allow != -1 && (allow & (1 << (request.ClassId - 1))) == 0) continue;
+            // Gear only some races may wear (the other faction's PvP gear ...).
+            var races = r.GetInt32(5);
+            if (request.RaceId > 0 && races > 0 && (races & 0x7FF) != 0x7FF && (races & (1 << (request.RaceId - 1))) == 0) continue;
             if (!CanUse(request.ClassId, request.Level, cls, sub, inv)) continue;
             // "Plate only" (the class's heaviest armor at this level): body armor of lighter types is left out.
             if (request.BestArmorOnly && cls == 4 && sub is >= 1 and <= 4 && inv != 16 && sub != ArmorCapAt(request.ClassId, request.Level)) continue;
@@ -400,7 +410,9 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
     }
 
     /// <summary>One line per item about where it comes from, easiest kind first.</summary>
-    public Dictionary<int, SourceSummary> Sources(IReadOnlyList<int> itemIds)
+    /// <param name="side">"Alliance" or "Horde": the other side's quests and vendors don't count ("" = all count).</param>
+    /// <param name="raceBit">Your race's bit, for quests only some races get (0 = all count).</param>
+    public Dictionary<int, SourceSummary> Sources(IReadOnlyList<int> itemIds, string side = "", int raceBit = 0)
     {
         var result = new Dictionary<int, SourceSummary>();
         if (itemIds.Count == 0) return result;
@@ -408,6 +420,8 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
         if (!TableExists(connection, "item_sources")) return result;
 
         var rows = new List<(int Item, string Kind, string Name, string Place, int InstanceType, double Chance, string Giver, string GiverPlace, bool RaidQuest, int QuestRep)>();
+        var otherSide = new HashSet<int>(); // items whose sources were all the other side's
+        var hasSide = HasColumn(connection, "npcs", "side");
         var needs = Requirements(connection, itemIds);
         using (var command = connection.CreateCommand())
         {
@@ -416,7 +430,8 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
                        COALESCE(m.instance_type, 0), s.chance, COALESCE(q.giver, ''),
                        COALESCE(n.zone, o.zone, ''), COALESCE(n.zone_x, o.zone_x, 0), COALESCE(n.zone_y, o.zone_y, 0),
                        COALESCE(gn.zone, go.zone, ''), COALESCE(gn.zone_x, go.zone_x, 0), COALESCE(gn.zone_y, go.zone_y, 0),
-                       {(HasColumn(connection, "quests", "endgame") ? "COALESCE(q.endgame, 0), COALESCE(q.rep_value, 0)" : "0, 0")}
+                       {(HasColumn(connection, "quests", "endgame") ? "COALESCE(q.endgame, 0), COALESCE(q.rep_value, 0)" : "0, 0")},
+                       COALESCE(q.races, 0), {(hasSide ? "COALESCE(n.side, ''), COALESCE(gn.side, '')" : "'', ''")}
                 FROM item_sources s
                 LEFT JOIN npcs n ON s.kind IN ('drop', 'vendor', 'pickpocket', 'skinning') AND n.id = s.ref_id
                 LEFT JOIN quests q ON s.kind IN ('quest', 'quest_choice') AND q.id = s.ref_id
@@ -428,12 +443,25 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
                 WHERE s.item_id IN {In(command, itemIds)}
                 """;
             using var r = command.ExecuteReader();
+            var seen = new HashSet<int>();
             while (r.Read())
+            {
+                seen.Add(r.GetInt32(0));
+                var kind = r.GetString(1);
+                var races = r.GetInt32(15);
+                var npcSide = r.GetString(16);
+                var giverSide = r.GetString(17);
+                var theirs = side.Length > 0 && (
+                    (kind is "quest" or "quest_choice" && ((raceBit > 0 && races > 0 && (races & raceBit) == 0) || (giverSide.Length > 0 && giverSide != side)))
+                    || (kind == "vendor" && npcSide.Length > 0 && npcSide != side));
+                if (theirs) continue;
                 rows.Add((r.GetInt32(0), r.GetString(1), r.GetString(2),
                     ItemSearchService.Location(r.GetString(7), r.GetDouble(8), r.GetDouble(9), r.GetString(3)),
                     r.GetInt32(4), r.GetDouble(5), r.GetString(6),
                     ItemSearchService.Location(r.GetString(10), r.GetDouble(11), r.GetDouble(12), r.GetString(3)),
                     r.GetInt32(13) == 1, r.GetInt32(14)));
+            }
+            otherSide.UnionWith(seen.Where(id => rows.All(x => x.Item != id)));
         }
 
         foreach (var group in rows.GroupBy(x => x.Item))
@@ -484,6 +512,9 @@ public sealed class UpgradeFinder(string databasePath, CalcDataService calcData)
                 Reputation = repNeeded >= HonoredRank,
             };
         }
+
+        foreach (var id in otherSide)
+            result.TryAdd(id, new SourceSummary(SourceKind.Other, "The other faction's") { OtherSideOnly = true });
 
         // Crafted items: anything a recipe makes and nothing else gives.
         using (var command = connection.CreateCommand())

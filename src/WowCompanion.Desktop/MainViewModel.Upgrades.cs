@@ -33,6 +33,10 @@ public partial class MainViewModel
     [ObservableProperty] private bool _upgradeArmorOnly = true;
     /// <summary>"Plate only", for the set's class and level.</summary>
     [ObservableProperty] private string _upgradeArmorLabel = "Best armor only";
+    /// <summary>Only sources your faction can use (no Horde quests or vendors for an Alliance set, and so on).</summary>
+    [ObservableProperty] private bool _upgradeOwnSide = true;
+    [ObservableProperty] private string _upgradeSideLabel = "Own faction only";
+    [ObservableProperty] private bool _hasUpgradeSide;
 
     /// <summary>The right column's tab: 0 gear totals, 1 the upgrade finder, 2 the upgrade list.</summary>
     [ObservableProperty]
@@ -58,6 +62,7 @@ public partial class MainViewModel
     partial void OnUpgradeDungeonChanged(bool value) => _ = RunUpgradesAsync();
     partial void OnUpgradeWorldChanged(bool value) => _ = RunUpgradesAsync();
     partial void OnUpgradeArmorOnlyChanged(bool value) => _ = RunUpgradesAsync();
+    partial void OnUpgradeOwnSideChanged(bool value) => _ = RunUpgradesAsync();
 
     [RelayCommand]
     private async Task FindUpgrades(GearSlotRow? row)
@@ -93,13 +98,17 @@ public partial class MainViewModel
             var world = UpgradeWorld;
             var armorOnly = UpgradeArmorOnly;
             UpgradeArmorLabel = $"{UpgradeFinder.ArmorName(UpgradeFinder.ArmorCapAt(set.ClassId, set.Level))} only";
+            var ownSide = UpgradeOwnSide;
+            var side = set.RaceId > 0 ? QuestService.SideOf(1 << (set.RaceId - 1)) : "";
+            HasUpgradeSide = side.Length > 0;
+            UpgradeSideLabel = side.Length > 0 ? $"{side} only" : "Own faction only";
             var result = await Task.Run(() =>
             {
                 var worn = SetGearBySlot(set.Id);
                 var items = worn.Values.ToList();
                 var current = worn.GetValueOrDefault(slot.SlotId);
                 return finder.Find(new UpgradeRequest(slot.SlotId, set.ClassId, set.Level, items, current, raid, dungeon, world,
-                    BestArmorOnly: armorOnly));
+                    BestArmorOnly: armorOnly, RaceId: set.RaceId, OwnSideOnly: ownSide));
             });
             if (run != _upgradeRun) return;
 

@@ -2430,6 +2430,9 @@
                                             <CheckBox Content="World drops" IsChecked="{Binding UpgradeWorld}" Margin="0,0,14,0" Foreground="{StaticResource Parchment}" />
                                             <CheckBox Content="{Binding UpgradeArmorLabel}" IsChecked="{Binding UpgradeArmorOnly}" Foreground="{StaticResource Parchment}"
                                                       ToolTip="Armor slots: only the heaviest armor this class wears at this level (cloaks, jewelry and off hands always show)" />
+                                            <CheckBox Content="{Binding UpgradeSideLabel}" IsChecked="{Binding UpgradeOwnSide}" Margin="14,0,0,0" Foreground="{StaticResource Parchment}"
+                                                      Visibility="{Binding HasUpgradeSide, Converter={StaticResource BoolToVis}}"
+                                                      ToolTip="Leave out quests and vendors only the other faction has (drops count for both)" />
                                         </WrapPanel>
                                         <TextBlock Text="Searching…" FontSize="12" Foreground="{StaticResource Dim}"
                                                    Visibility="{Binding UpgradeBusy, Converter={StaticResource BoolToVis}}" />
