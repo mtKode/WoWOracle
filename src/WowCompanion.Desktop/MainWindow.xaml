@@ -2859,7 +2859,7 @@
                     </CollectionViewSource>
                 </Grid.Resources>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="240" />
                     <ColumnDefinition Width="10" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
@@ -2867,9 +2867,9 @@
                 <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="1" CornerRadius="3">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Margin="10,10,10,6">
-                            <DockPanel>
-                                <TextBlock Text="Map" FontSize="16" Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock Text="Map" FontSize="16" Foreground="{StaticResource Gold}" />
+                            <!-- Its own row: three tabs don't fit beside the title -->
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                     <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Zones"
                                                  IsChecked="{Binding ShowZonePanel}" ToolTip="The zone maps" />
                                     <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Ore &amp; herbs" Margin="4,0,0,0"
@@ -2878,8 +2878,7 @@
                                     <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Farming" Margin="4,0,0,0"
                                                  IsChecked="{Binding ShowFarmPanel}"
                                                  ToolTip="Vendor gold: mobs around your level by what a kill gives on average (coin, greys, other drops)" />
-                                </StackPanel>
-                            </DockPanel>
+                            </StackPanel>
                             <TextBox Style="{StaticResource FilterTextBox}" Margin="0,8,0,0"
                                      Text="{Binding MapSearchText, UpdateSourceTrigger=PropertyChanged}"
                                      local:ListKeys.Target="{Binding ElementName=MapHitList}"
