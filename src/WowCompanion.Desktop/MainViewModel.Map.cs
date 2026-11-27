@@ -54,6 +54,7 @@ public partial class MainViewModel
     {
         _maps = new MapService(gameDbPath);
         UseGather(gameDbPath);
+        UseFarm(gameDbPath);
         var previous = SelectedMapZone?.UiMapId;
         MapZones.Clear();
         // Continents come twice in Forever's data (a second, plain picture); keep the first one, with the zone lines.
@@ -199,7 +200,7 @@ public partial class MainViewModel
     public ObservableCollection<MapSearchHit> MapHits { get; } = [];
     private CancellationTokenSource? _mapSearchCts;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMapSearching), nameof(IsNotMapSearching), nameof(ShowZoneList), nameof(ShowGatherList))] private string _mapSearchText = "";
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMapSearching), nameof(IsNotMapSearching), nameof(ShowZoneList), nameof(ShowGatherList), nameof(ShowFarmList))] private string _mapSearchText = "";
     [ObservableProperty] private MapSearchHit? _selectedMapHit;
 
     /// <summary>While there's search text the results replace the zone list.</summary>

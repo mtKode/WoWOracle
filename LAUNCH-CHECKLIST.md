@@ -111,7 +111,10 @@ before launch).
 - [ ] In game, `/osync`: the UI reloads at once and `WTF\Account\…\SavedVariables\WoWOracle.lua` gets the current
       time (0.13.0 reloaded from a timer, which the client ignored, so nothing was written until a typed `/reload`).
 
-## 6. Game data
+## 5n. Farming (app 1.1.30)
+- [ ] First start rebuilds the game data (schema 38). Map → **Farming**: the level is the gear set's; at 60 the
+      Eastern Plaguelands plaguebats are near the top (~20s a kill), no town guards. Hover: the best drops with chance
+      × price. Click one: its zone opens with a red dot on each spawn. Change the level or tick Elites: the list follows.
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).
 - [ ] Learned items are now in the real data (no "Learned from the game client" descriptions on common items).

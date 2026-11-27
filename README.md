@@ -193,6 +193,10 @@ finds zones, subzones (Freewind Post, The Shimmering Flats), towns, flight maste
 An NPC that spawns in several places (mobs, wandering rares) shows as a red dot on every spawn in that zone instead of
 one marker, from the map search and from **View on map** on a "Dropped by" or "Sold by" line. Forever's own NPCs get
 their dots as you meet them with the addon on.
+**Farming** (next to *Zones* and *Ore & herbs*): mobs from 10 levels below your level to 1 above, ranked by the vendor
+gold a kill gives on average: the coin it drops, its greys at the vendor, and other drops at the vendor or, with
+an Auctionator scan, the auction house. Hover a mob for its best drops; click it for its spawns on the map.
+Classic drop rates: WoW Forever's own mobs aren't in it.
 
 **Ore & herbs** (next to *Zones*) is a Mining and Herbalism guide: every ore or herb with the skill it needs and
 the zones with the most of it, your current one in gold. Pick one and the map shows a dot on every spot where it can

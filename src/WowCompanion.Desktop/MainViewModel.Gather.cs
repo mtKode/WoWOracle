@@ -31,11 +31,15 @@ public partial class MainViewModel
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(GatherMining))] private bool _gatherHerbs;
 
     /// <summary>The other radio button of each pair.</summary>
-    public bool ShowZonePanel { get => !ShowGatherPanel; set => ShowGatherPanel = !value; }
+    public bool ShowZonePanel
+    {
+        get => !ShowGatherPanel && !ShowFarmPanel;
+        set { if (value) (ShowGatherPanel, ShowFarmPanel) = (false, false); }
+    }
     public bool GatherMining { get => !GatherHerbs; set => GatherHerbs = !value; }
 
     /// <summary>Search answers replace whichever list the panel shows.</summary>
-    public bool ShowZoneList => !IsMapSearching && !ShowGatherPanel;
+    public bool ShowZoneList => !IsMapSearching && ShowZonePanel;
     public bool ShowGatherList => !IsMapSearching && ShowGatherPanel;
     [ObservableProperty] private GatherStepRow? _selectedGatherStep;
     [ObservableProperty] private GatherZone? _selectedGatherZone;
@@ -55,7 +59,9 @@ public partial class MainViewModel
 
     partial void OnShowGatherPanelChanged(bool value)
     {
-        if (value) LoadGatherGuide();
+        if (!value) return;
+        ShowFarmPanel = false;
+        LoadGatherGuide();
     }
 
     partial void OnGatherHerbsChanged(bool value) => LoadGatherGuide();

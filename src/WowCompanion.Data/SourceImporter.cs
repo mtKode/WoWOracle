@@ -19,7 +19,8 @@ public static class SourceImporter
             id INTEGER PRIMARY KEY, name TEXT NOT NULL, subname TEXT NOT NULL,
             min_level INTEGER NOT NULL, max_level INTEGER NOT NULL, rank INTEGER NOT NULL, map INTEGER NOT NULL,
             zone TEXT NOT NULL DEFAULT '', zone_x REAL NOT NULL DEFAULT 0, zone_y REAL NOT NULL DEFAULT 0,
-            side TEXT NOT NULL DEFAULT ''   -- 'Alliance' or 'Horde' when only that side may deal with it, else ''
+            side TEXT NOT NULL DEFAULT '',  -- 'Alliance' or 'Horde' when only that side may deal with it, else ''
+            min_gold INTEGER NOT NULL DEFAULT 0, max_gold INTEGER NOT NULL DEFAULT 0   -- coin a kill drops (copper)
         );
         CREATE TABLE objects (
             id INTEGER PRIMARY KEY, name TEXT NOT NULL, type INTEGER NOT NULL, map INTEGER NOT NULL,
@@ -125,7 +126,7 @@ public static class SourceImporter
         var npcSpawn = MainSpawn(T("creature"), "id");
         var sides = csv is null ? [] : FactionSides(csv("FactionTemplate"));
         Insert(connection, transaction,
-            "INSERT OR REPLACE INTO npcs (id, name, subname, min_level, max_level, rank, map, zone, zone_x, zone_y, side) VALUES ($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k)",
+            "INSERT OR REPLACE INTO npcs (id, name, subname, min_level, max_level, rank, map, zone, zone_x, zone_y, side, min_gold, max_gold) VALUES ($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m)",
             npcs.Rows.Select(r =>
             {
                 var id = npcs.Int(r, "Entry");
@@ -135,6 +136,7 @@ public static class SourceImporter
                 {
                     id, npcs.Get(r, "Name"), npcs.Get(r, "SubName"), npcs.Int(r, "MinLevel"), npcs.Int(r, "MaxLevel"),
                     npcs.Int(r, "Rank"), map, zone, zx, zy, sides.GetValueOrDefault(npcs.Int(r, "Faction"), ""),
+                    npcs.Int(r, "MinLootGold"), npcs.Int(r, "MaxLootGold"),
                 };
             }));
 

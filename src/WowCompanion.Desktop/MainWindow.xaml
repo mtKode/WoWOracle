@@ -2875,6 +2875,9 @@
                                     <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Ore &amp; herbs" Margin="4,0,0,0"
                                                  IsChecked="{Binding ShowGatherPanel}"
                                                  ToolTip="Mining and Herbalism: what to gather at your skill, and every spot where it spawns" />
+                                    <RadioButton Style="{StaticResource TabRadio}" GroupName="MapPanel" Content="Farming" Margin="4,0,0,0"
+                                                 IsChecked="{Binding ShowFarmPanel}"
+                                                 ToolTip="Vendor gold: mobs around your level by what a kill gives on average (coin, greys, other drops)" />
                                 </StackPanel>
                             </DockPanel>
                             <TextBox Style="{StaticResource FilterTextBox}" Margin="0,8,0,0"
@@ -2909,6 +2912,38 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
+                        <!-- Farming: mobs around your level by the gold a kill gives, their spawns on the map -->
+                        <DockPanel Margin="10,0,10,8" Visibility="{Binding ShowFarmList, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DockPanel.Dock="Top" Margin="0,2,0,4">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Your level" FontSize="12" Foreground="{StaticResource Parchment}" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding FarmLevel, UpdateSourceTrigger=PropertyChanged, Delay=400}" Width="40" Margin="6,0,0,0"
+                                             Style="{StaticResource FilterTextBox}" ToolTip="Mobs from 10 levels below to 1 above (the gear set's level to start with)" />
+                                </StackPanel>
+                                <CheckBox Content="Elites" IsChecked="{Binding FarmElites}" Margin="0,6,0,0" Foreground="{StaticResource Parchment}" FontSize="12"
+                                          ToolTip="Elite mobs too (outdoor elites; dungeons are left out)" />
+                                <CheckBox Content="Items at auction prices" IsChecked="{Binding FarmAuction}" Margin="0,4,0,0" Foreground="{StaticResource Parchment}" FontSize="12"
+                                          Visibility="{Binding HasAuctionPrices, Converter={StaticResource BoolToVis}}"
+                                          ToolTip="Whites and better count at your Auctionator price when it's above the vendor's (greys always at the vendor)" />
+                            </StackPanel>
+                            <TextBlock DockPanel.Dock="Bottom" Text="{Binding FarmNote}" FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ListBox ItemsSource="{Binding FarmRows}" SelectedItem="{Binding SelectedFarmRow}"
+                                     ItemContainerStyle="{StaticResource RecipeItem}" Background="Transparent" BorderThickness="0" Padding="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,1,8,1" ToolTip="{Binding Tip}" Background="Transparent">
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding PerKillText}" FontSize="13" Foreground="{StaticResource Gold}" Margin="6,0,0,0" />
+                                                <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Parchment}" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="{StaticResource Dim}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Breakdown}" FontSize="11" Foreground="{StaticResource Dim}" Opacity="0.8" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
                         <!-- Ore & herbs: the guide for Mining or Herbalism, and where the picked node spawns -->
                         <DockPanel Margin="10,0,10,8" Visibility="{Binding ShowGatherList, Converter={StaticResource BoolToVis}}">
                             <StackPanel DockPanel.Dock="Top">
