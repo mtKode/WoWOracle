@@ -76,7 +76,8 @@ Everything lives in `%LOCALAPPDATA%\WowCompanion`:
   VMaNGOS has none of that node within a map unit (game data schema 37).
 - **Farming** (`FarmService`, Map page): `npcs.min_gold` / `max_gold` (creature_template MinLootGold / MaxLootGold,
   game data schema 38) for the coin, plus every drop's chance × sell price (greys) or the higher of sell and auction
-  price (the rest). World mobs only (no instances, no Alliance / Horde NPCs such as guards), 4+ spawns in their zone,
+  price (the rest). Drops under `FarmService.SteadyChance` (5%) go to `Rare`, shown apart and left out of the
+  order, so steady greys beat a mob whose average leans on a rare drop. World mobs only (no instances, no Alliance / Horde NPCs such as guards), 4+ spawns in their zone,
   one row per name and zone.
 - **Icons, map tiles and talent art** are the game's BLP files from `wago.tools/api/casc/<fileDataId>?download`,
   decoded by `Blp.cs` (DXT1/3/5, palettized, raw) and cached as PNG. File ids → names come from

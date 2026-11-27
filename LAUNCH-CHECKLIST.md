@@ -115,6 +115,8 @@ before launch).
 - [ ] First start rebuilds the game data (schema 38). Map → **Farming**: the level is the gear set's; at 60 the
       Eastern Plaguelands plaguebats are near the top (~20s a kill), no town guards. Hover: the best drops with chance
       × price. Click one: its zone opens with a red dot on each spawn. Change the level or tick Elites: the list follows.
+- [ ] (1.1.32) Rows say "rare ≈ …" for drops under 5%, which don't count toward the order; the hover says what the
+      rare drops add on average. At 60 the Twilight cultists (rare greens) are no longer near the top.
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).
 - [ ] Learned items are now in the real data (no "Learned from the game client" descriptions on common items).

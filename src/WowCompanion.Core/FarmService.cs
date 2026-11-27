@@ -7,13 +7,16 @@ public sealed record FarmDrop(int ItemId, string Name, int Quality, double Chanc
 
 /// <summary>
 /// A mob worth farming for vendor gold: what one kill gives on average (its coin, plus each drop's chance × price),
-/// and how many spawns it has in its zone.
+/// and how many spawns it has in its zone. Greys and Other only count steady drops (FarmService.SteadyChance or more);
+/// Rare is the rest, which mostly doesn't happen in a short farm.
 /// </summary>
 public sealed record FarmMob(int NpcId, string Name, string Zone, double X, double Y, int MinLevel, int MaxLevel, bool Elite, int Spawns,
-    long Coin, long Greys, long Other, IReadOnlyList<FarmDrop> TopDrops)
+    long Coin, long Greys, long Other, long Rare, IReadOnlyList<FarmDrop> TopDrops)
 {
-    /// <summary>Copper per kill: coin, greys and the rest.</summary>
+    /// <summary>Steady copper per kill: coin, and greys and other items that drop often (the list's order).</summary>
     public long PerKill => Coin + Greys + Other;
+    /// <summary>With the rare drops' average too.</summary>
+    public long WithRare => PerKill + Rare;
     public string LevelText => MinLevel == MaxLevel ? MinLevel.ToString() : $"{MinLevel}-{MaxLevel}";
 }
 
@@ -24,6 +27,9 @@ public sealed record FarmMob(int NpcId, string Name, string Zone, double X, doub
 /// </summary>
 public sealed class FarmService(string databasePath)
 {
+    /// <summary>Drops at least this likely (percent) count as steady income; rarer ones are shown apart.</summary>
+    public const double SteadyChance = 5;
+
     /// <param name="price">
     /// What a non-grey item is worth (item id, vendor price → copper), e.g. the auction price when it's higher; null
     /// counts the vendor price. Greys always count their vendor price.
@@ -89,11 +95,13 @@ public sealed class FarmService(string databasePath)
             .Select(m =>
             {
                 var list = drops.GetValueOrDefault(m.Key) ?? [];
-                var greys = (long)Math.Round(list.Where(d => d.Quality == 0).Sum(d => d.PerKill));
-                var other = (long)Math.Round(list.Where(d => d.Quality > 0).Sum(d => d.PerKill));
+                var steady = list.Where(d => d.Chance >= SteadyChance).ToList();
+                var greys = (long)Math.Round(steady.Where(d => d.Quality == 0).Sum(d => d.PerKill));
+                var other = (long)Math.Round(steady.Where(d => d.Quality > 0).Sum(d => d.PerKill));
+                var rare = (long)Math.Round(list.Where(d => d.Chance < SteadyChance).Sum(d => d.PerKill));
                 var v = m.Value;
-                return new FarmMob(m.Key, v.Name, v.Zone, v.X, v.Y, v.Min, v.Max, v.Elite, v.Spawns, v.Coin, greys, other,
-                    list.OrderByDescending(d => d.PerKill).Take(5).ToList());
+                return new FarmMob(m.Key, v.Name, v.Zone, v.X, v.Y, v.Min, v.Max, v.Elite, v.Spawns, v.Coin, greys, other, rare,
+                    list.OrderByDescending(d => d.PerKill).Take(6).ToList());
             })
             .Where(m => m.PerKill > 0)
             // The same mob under several ids (level variants): the best one per name and zone.

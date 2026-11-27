@@ -17,18 +17,24 @@ public sealed record FarmRow(FarmMob Mob)
         Mob.Coin > 0 ? $"coin {ItemText.Money(Mob.Coin)}" : "",
         Mob.Greys > 0 ? $"greys {ItemText.Money(Mob.Greys)}" : "",
         Mob.Other > 0 ? $"items {ItemText.Money(Mob.Other)}" : "",
+        Mob.Rare > 0 ? $"rare ≈ {ItemText.Money(Mob.Rare)}" : "",
     }.Where(s => s.Length > 0));
     public string Tip
     {
         get
         {
             var inv = System.Globalization.CultureInfo.InvariantCulture;
-            var lines = new List<string> { $"{Mob.Name}: about {PerKillText} a kill", Breakdown, "" };
+            var lines = new List<string>
+            {
+                $"{Mob.Name}: about {PerKillText} a kill from coin and drops of {FarmService.SteadyChance:0}% or more",
+                Mob.Rare > 0 ? $"Rarer drops add about {ItemText.Money(Mob.Rare)} on average (≈ {ItemText.Money(Mob.WithRare)} in all), but mostly don't happen in a short farm." : "",
+                "",
+            };
             lines.AddRange(Mob.TopDrops.Select(d =>
                 $"{d.Name}: {d.Chance.ToString(d.Chance < 1 ? "0.##" : "0.#", inv)}% × {ItemText.Money(d.Price)} ≈ {ItemText.Money((long)Math.Round(d.PerKill))}"));
             lines.Add("");
             lines.Add("Click to see its spawns on the map.");
-            return string.Join("\n", lines.Where((l, i) => l.Length > 0 || i > 0));
+            return string.Join("\n", lines.Where((l, i) => l.Length > 0 || (i > 0 && lines[i - 1].Length > 0)));
         }
     }
 }
@@ -97,6 +103,6 @@ public partial class MainViewModel
         foreach (var mob in mobs) FarmRows.Add(new FarmRow(mob));
         FarmNote = mobs.Count == 0
             ? "No mobs found: the coin per kill comes with the next game data rebuild (restart the app)."
-            : $"Level {lo}-{hi} mobs with 4+ spawns, by what a kill gives on average (Classic drop rates; Forever's own mobs aren't in it). Hover for the drops.";
+            : $"Level {lo}-{hi} mobs with 4+ spawns, by steady gold a kill: coin and drops of {FarmService.SteadyChance:0}% or more (rarer ones shown as \"rare\"). Classic drop rates; Forever's own mobs aren't in it. Hover for the drops.";
     }
 }
