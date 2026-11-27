@@ -6,7 +6,8 @@
             /oracle t          inspect your target and copy it (also: /oracle target)
             /oracle talents    save your class's talent tree for the app (also done at login/logout)
             /oracle quests     how many quests are saved for the app ("/oracle quests clear" empties the list)
-            /oracle sync       save gear, talents, professions, recipes and bags now and reload, so the app gets them right away
+            /osync             save gear, talents, professions, recipes and bags now and reload, so the app gets them right away
+                               (also: /oracle sync)
             /oracle debug      print which game APIs this client has (talents, inspect, stats)
 
   The export is plain text between "!WOWORACLE" and "!END". The window it shows in has the text selected:
@@ -964,7 +965,7 @@ end
 -- ------------------------------------------------------------------------------------------------
 -- Character snapshot for the app (crafting planner): profession ranks, known recipes, and what you carry
 -- (bags, and the bank as last seen). Saved on its own: at login, when skills or bags change, at logout.
--- "/oracle sync" saves and reloads the UI, so the game writes the file and the app picks it up right away.
+-- "/osync" saves and reloads the UI, so the game writes the file and the app picks it up right away.
 -- ------------------------------------------------------------------------------------------------
 
 local charState = { skills = {}, recipes = {}, bags = {}, bank = nil }
@@ -1288,7 +1289,7 @@ local function saveSelfExport()
     end)
 end
 
--- /reload or /oracle sync: save what the client has right now (at logout it has nothing: keep the last save).
+-- /reload or /osync: save what the client has right now (at logout it has nothing: keep the last save).
 local function saveSelfExportNow()
     if not characterReady() then return end
     local ok, text = pcall(buildExport, "player", false)
@@ -1757,6 +1758,19 @@ events:SetScript("OnEvent", function(_, event, name, extra, ...)
     end
 end)
 
+-- Save everything now and reload, so the game writes the file for the app.
+local function syncNow()
+    pcall(refreshCharacter, "all")
+    pcall(saveSelfExportNow)
+    pcall(captureTalentLayout, true)
+    say("saved; reloading so the game writes the file for the app… (if it doesn't, type /reload)")
+    -- Right away, inside your command: the client ignores a reload an addon starts later (from a timer).
+    if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
+end
+
+SLASH_WOWORACLESYNC1 = "/osync"
+SlashCmdList.WOWORACLESYNC = function() syncNow() end
+
 SLASH_WOWORACLE1 = "/oracle"
 SlashCmdList.WOWORACLE = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
@@ -1798,15 +1812,10 @@ SlashCmdList.WOWORACLE = function(msg)
         WoWOracleDB.seen = {}
         say("saved NPCs, vendors and loot cleared (the app keeps what it already read).")
     elseif msg == "sync" then
-        pcall(refreshCharacter, "all")
-        pcall(saveSelfExportNow)
-        pcall(captureTalentLayout, true)
-        say("saved; reloading so the game writes the file for the app… (if it doesn't, type /reload)")
-        -- Right away, inside your command: the client ignores a reload an addon starts later (from a timer).
-        if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
+        syncNow()
     elseif msg == "talents" then
         if captureTalentLayout(false) == 0 then say("couldn't read the talent tree.") end
     else
-        say("/oracle (you), /oracle t (inspect your target), /oracle sync (save now for the app), /oracle talents, /oracle quests [clear], /oracle seen [clear], /oracle base, /oracle trainer, /oracle debug")
+        say("/oracle (you), /oracle t (inspect your target), /osync (save now for the app), /oracle talents, /oracle quests [clear], /oracle seen [clear], /oracle base, /oracle trainer, /oracle debug")
     end
 end

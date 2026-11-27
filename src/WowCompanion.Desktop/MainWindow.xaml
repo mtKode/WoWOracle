@@ -1634,7 +1634,7 @@
                                               Visibility="{Binding HasPlanCharacters, Converter={StaticResource BoolToVis}}"
                                               ToolTip="Whose skill, known recipes and bags to plan with. Each character keeps its own typed counts." />
                                     <TextBlock Text="None yet: log in with the addon" FontSize="13" Foreground="{StaticResource Dim}" Margin="0,5,0,0"
-                                               ToolTip="With the WoWOracle addon, each character's skill, known recipes and bags appear here by themselves (log in, or /oracle sync)."
+                                               ToolTip="With the WoWOracle addon, each character's skill, known recipes and bags appear here by themselves (log in, or /osync)."
                                                Visibility="{Binding NoPlanCharacters, Converter={StaticResource BoolToVis}}" />
                                 </StackPanel>
                                 <StackPanel Margin="0,0,16,6">

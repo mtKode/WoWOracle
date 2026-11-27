@@ -22,7 +22,7 @@ before launch).
 - [ ] Bags: `C_Container.GetContainerItemInfo` or `GetContainerItemInfo`.
 
 ## 3. Character sync (crafting planner)
-- [ ] Log in, open each profession window once, open the bank once, then `/oracle sync`.
+- [ ] Log in, open each profession window once, open the bank once, then `/osync`.
 - [ ] Chronicle shows "Synced from the game: <name> — <profession> x/y, N items in bags and bank".
 - [ ] Crafting → Level a profession: your character is in the list; skill now / goal fill in; the note shows
       "N known recipes" and "bags + bank".
@@ -31,7 +31,7 @@ before launch).
 
 ## 4. Own gear sync
 - [ ] A gear set and a talent set named exactly after your character appear (Chronicle: "Gear and talents from the game").
-- [ ] Change a piece of gear → `/oracle sync` → the set updates within a few seconds.
+- [ ] Change a piece of gear → `/osync` → the set updates within a few seconds.
 - [ ] A copy under another name ("<name> Alt SP") is left alone.
 
 ## 5. Quests and talent trees from the client
@@ -42,11 +42,11 @@ before launch).
 - [ ] Chronicle: "Addon's known-data list updated (_forever_ …)". `Interface\AddOns\WoWOracle\Known.lua` is no longer the `WoWOracleKnown = nil` placeholder.
 - [ ] In game `/reload`, then `/oracle seen`: second line shows the known list (npcs, placed, objects, quests, vendors, sourced ranges).
 - [ ] Target a few NPCs in a Forever-only zone (Mount Hyjal, Zephras Isle…) and a vendor there; kill and loot some mobs. `/oracle seen` counts go up; in an old zone they stay at 0.
-- [ ] `/oracle sync` → Chronicle: "From the game: … new NPCs · … vendor items · … drops". The new NPC shows on the map, its drops in the item's sources.
+- [ ] `/osync` → Chronicle: "From the game: … new NPCs · … vendor items · … drops". The new NPC shows on the map, its drops in the item's sources.
 - [ ] If loot never counts: `/dump GetLootSourceInfo` must be a function (otherwise only your dead target counts).
 
 ## 5c. Base stats (addon 0.9.0)
-- [ ] `/oracle base` prints your base stats; after `/oracle sync` the Chronicle says "From the game: … base-stat level".
+- [ ] `/oracle base` prints your base stats; after `/osync` the Chronicle says "From the game: … base-stat level".
 - [ ] Calculator with that class, race and level and blank naked stats: the note says "Naked stats recorded in game at level N".
 - [ ] Take all gear off once: `/oracle base` mentions health and mana; **Copy recorded** gives CSV with naked health/mana.
 - [ ] Make the class/race combinations you're curious about (Tauren Warrior…) and log each in once.
@@ -54,15 +54,15 @@ before launch).
 ## 5d. Trainer skills (addon 0.10.0)
 - [ ] Open a profession trainer, then `/oracle trainer`: "read N recipes from this trainer". The trainer window's
       filter (available / unavailable / used) is the same as before you opened it.
-- [ ] `/oracle sync` → Chronicle: "From the game: … N trainer skills".
+- [ ] `/osync` → Chronicle: "From the game: … N trainer skills".
 - [ ] That trainer's recipes show their skill without **~** on the item page; Level a profession uses them.
 - [ ] Compare a few against the trainer's "Requires <profession> (N)" line.
 
 ## 5e. Forever dungeons and map search (app 1.1.7)
-- [ ] Loot: The Drowned City lists Zul'Alai, Var'Taka, Captain Dreadrise… After a run with the addon on and `/oracle sync`,
+- [ ] Loot: The Drowned City lists Zul'Alai, Var'Taka, Captain Dreadrise… After a run with the addon on and `/osync`,
       the bosses you killed show their drops.
 - [ ] Map: search "freewind", "shimmering", a Riverglades subzone and an NPC; each opens the zone with a marker on the spot.
-- [ ] Addon 0.11.0: spend a minute in a subzone the search shows as "(whole zone)" (Faol's Rest), `/oracle sync`: the
+- [ ] Addon 0.11.0: spend a minute in a subzone the search shows as "(whole zone)" (Faol's Rest), `/osync`: the
       Chronicle says "From the game: 1 subzone on the map" and the search puts a marker there.
 
 ## 5f. Ore & herbs (app 1.1.13, addon 0.12.0)
@@ -70,7 +70,7 @@ before launch).
       Herbalism Peacebloom 1 … Black Lotus 300; your skill's row is gold.
 - [ ] Pick Copper Vein: the map opens on its best zone with copper dots; the zone list under it opens other zones with dots.
 - [ ] Map search "tin" / "peacebloom" opens the guide on it. **Clear** takes the dots off.
-- [ ] In game, mine or pick a few nodes in a Forever zone (Riverglades), `/oracle sync`: the Chronicle says
+- [ ] In game, mine or pick a few nodes in a Forever zone (Riverglades), `/osync`: the Chronicle says
       "… ore/herb spots on the map" and the node shows there (a new name lists with skill "?").
 
 ## 5g. Recipe trainers (app 1.1.16)
@@ -84,7 +84,7 @@ before launch).
       red dot on each spawn and no marker; a dot's tooltip says "27 spawn points in Westfall".
 - [ ] An item "Dropped by" a mob → View on map: the same red dots. A single-spawn NPC (a trainer) shows the marker.
 - [ ] In a Forever zone, walk up to a few of the same Forever mob in different places (target or mouse over them up
-      close), `/oracle sync`: the Chronicle says "… NPC spots on the map"; map search on it shows the dots.
+      close), `/osync`: the Chronicle says "… NPC spots on the map"; map search on it shows the dots.
 
 ## 5i. Upgrade list (app 1.1.22)
 - [ ] Gear → Upgrades on a slot → **+ List** on two items: the **Upgrade list (2)** tab shows them with slot, gain and source; the tabs swap between Totals, Upgrades and the list.
@@ -107,8 +107,8 @@ before launch).
 - [ ] Map → Ore & herbs → Rich Thorium Vein: Azshara, Winterspring, Eastern Plaguelands (~40 spots), Burning Steppes,
       Un'Goro Crater and Western Plaguelands. Black Lotus shows Burning Steppes, Eastern Plaguelands, Winterspring, Silithus.
 
-## 5m. Sync reloads (app 1.1.28, addon 0.13.1)
-- [ ] In game, `/oracle sync`: the UI reloads at once and `WTF\Account\…\SavedVariables\WoWOracle.lua` gets the current
+## 5m. Sync reloads (app 1.1.28, addon 0.13.1; `/osync` from 1.1.29, addon 0.13.2)
+- [ ] In game, `/osync`: the UI reloads at once and `WTF\Account\…\SavedVariables\WoWOracle.lua` gets the current
       time (0.13.0 reloaded from a timer, which the client ignored, so nothing was written until a typed `/reload`).
 
 ## 6. Game data

@@ -69,7 +69,7 @@ what came in, in **Oracle's Chronicle** (the scroll at the bottom left).
 
 | Command | What it does |
 |---|---|
-| `/oracle sync` | Save now and reload, so the app gets your latest state right away |
+| `/osync` | Save now and reload, so the app gets your latest state right away (also `/oracle sync`) |
 | `/oracle` | Copy your character (also the **Oracle** button on your character window) |
 | `/oracle t` | Copy the player you're targeting (also the **Oracle** button on the inspect window) |
 | `/oracle base` | Your base stats right now, and how many class/race/level combinations are saved |
@@ -228,7 +228,7 @@ folder (the one with `_forever_` inside).
 **The addon is "out of date" in game.** Tick *Load out of date AddOns* in the AddOns list, and update the app:
 new versions bring an updated addon and offer **Update addon**.
 
-**Nothing comes in from the game.** The game only saves when you log out or `/reload`; `/oracle sync` does it on
+**Nothing comes in from the game.** The game only saves when you log out or `/reload`; `/osync` does it on
 demand. Check the Chronicle, and that the addon is ticked in the AddOns list.
 
 **An item or quest is missing.** The app's data is updated whenever a new game build appears. New Forever content

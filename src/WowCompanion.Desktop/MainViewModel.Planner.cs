@@ -12,7 +12,7 @@ namespace WowCompanion.Desktop;
 /// <summary>
 /// Crafting page, "Level a profession": from your skill upward, the cheapest route (ProfessionPlanner), the materials for
 /// it and what's still to get. With the addon, the character's profession ranks, known recipes and bag/bank counts come
-/// from the game on their own (WoWOracle.lua is watched, so "/oracle sync" in game shows up here within seconds).
+/// from the game on their own (WoWOracle.lua is watched, so "/osync" in game shows up here within seconds).
 /// </summary>
 public partial class MainViewModel
 {
@@ -382,7 +382,7 @@ public partial class MainViewModel
     }
 
     /// <summary>
-    /// The addon's file changed (logout, /reload, /oracle sync): the same pass as at start-up (quests, items, sightings;
+    /// The addon's file changed (logout, /reload, /osync): the same pass as at start-up (quests, items, sightings;
     /// talent trees stay a start-up thing) in the background, then characters, own gear and the planner.
     /// </summary>
     private void AddonFileChanged()
