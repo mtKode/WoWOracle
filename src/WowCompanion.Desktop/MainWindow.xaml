@@ -2925,6 +2925,12 @@
                                           Visibility="{Binding HasAuctionPrices, Converter={StaticResource BoolToVis}}"
                                           ToolTip="Whites and better count at your Auctionator price when it's above the vendor's (greys always at the vendor)" />
                             </StackPanel>
+                            <!-- Column header: the gold on the right of each row is per kill -->
+                            <DockPanel DockPanel.Dock="Top" Margin="0,4,8,2">
+                                <TextBlock DockPanel.Dock="Right" Text="gold per kill" FontSize="11" Foreground="{StaticResource Dim}"
+                                           ToolTip="The average one kill gives: coin and drops of 5% or more" />
+                                <TextBlock Text="Mob" FontSize="11" Foreground="{StaticResource Dim}" />
+                            </DockPanel>
                             <TextBlock DockPanel.Dock="Bottom" Text="{Binding FarmNote}" FontSize="11" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,6,0,0" />
                             <ListBox ItemsSource="{Binding FarmRows}" SelectedItem="{Binding SelectedFarmRow}"
                                      ItemContainerStyle="{StaticResource RecipeItem}" Background="Transparent" BorderThickness="0" Padding="0"

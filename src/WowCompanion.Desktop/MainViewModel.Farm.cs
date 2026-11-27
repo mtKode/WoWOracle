@@ -9,7 +9,7 @@ public sealed record FarmRow(FarmMob Mob)
 {
     public string Name => Mob.Name + (Mob.Elite ? " (elite)" : "");
     /// <summary>"6s 50c" a kill on average.</summary>
-    public string PerKillText => ItemText.Money(Mob.PerKill) + " / kill";
+    public string PerKillText => ItemText.Money(Mob.PerKill);
     public string Meta => $"{Mob.Zone} · level {Mob.LevelText} · {Mob.Spawns} spawns";
     /// <summary>"coin 2s 10c · greys 4s 40c · items 2c".</summary>
     public string Breakdown => string.Join(" · ", new[]
