@@ -76,15 +76,18 @@ public sealed class FarmService(string databasePath)
         using (var command = connection.CreateCommand())
         {
             command.CommandText = $"""
-                SELECT s.ref_id, i.id, i.name, i.quality, s.chance, i.sell_price
+                SELECT s.ref_id, i.id, i.name, i.quality, s.chance, i.sell_price, i.bonding
                 FROM item_sources s JOIN items i ON i.id = s.item_id
                 WHERE s.kind = 'drop' AND s.chance > 0 AND s.ref_id IN ({string.Join(',', mobs.Keys)})
+                  AND i.class_id <> 12   -- quest items: they drop only while on the quest (the dump's chance is for then)
                 """;
             using var r = command.ExecuteReader();
             while (r.Read())
             {
                 var (quality, chance, sell) = (r.GetInt32(3), r.GetDouble(4), r.GetInt64(5));
-                var worth = quality == 0 || price is null ? sell : Math.Max(sell, price(r.GetInt32(1), sell));
+                // Soulbound (bind on pickup 1, quest 4) can't go to the auction house: vendor price only.
+                var tradable = r.GetInt32(6) is not (1 or 4);
+                var worth = quality == 0 || price is null || !tradable ? sell : Math.Max(sell, price(r.GetInt32(1), sell));
                 if (worth <= 0) continue;
                 if (!drops.TryGetValue(r.GetInt32(0), out var list)) drops[r.GetInt32(0)] = list = [];
                 list.Add(new FarmDrop(r.GetInt32(1), r.GetString(2), quality, chance, worth, chance / 100 * worth));
