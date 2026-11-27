@@ -101,6 +101,12 @@ before launch).
       its priced reagents ("(1 without a price)" when some have none). The craft list's rows say "mats ≈ …", with
       the total and each for more than one craft.
 
+## 5l. Ore and herb spots from VMaNGOS (app 1.1.27)
+- [ ] First start rebuilds the game data (schema 37) and the status says "Downloading ore and herb spots…";
+      `cache\sources` has a `vmangos-objects-db-….tsv` (~1.5 MB) and no zip.
+- [ ] Map → Ore & herbs → Rich Thorium Vein: Azshara, Winterspring, Eastern Plaguelands (~40 spots), Burning Steppes,
+      Un'Goro Crater and Western Plaguelands. Black Lotus shows Burning Steppes, Eastern Plaguelands, Winterspring, Silithus.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

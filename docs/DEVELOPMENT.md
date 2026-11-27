@@ -68,6 +68,12 @@ Everything lives in `%LOCALAPPDATA%\WowCompanion`:
 - **Sources** (drops with real chances, vendors, quests, NPC/object spawns, quest chains and text) come from the
   [CMaNGOS classic-db](https://github.com/cmangos/classic-db) dump (Classic 1.12). Loot groups and reference
   tables are worked out at import.
+- **Ore and herb spots** also come from the [VMaNGOS](https://github.com/vmangos/core) daily database snapshot
+  (`DataSourceOptions.NodeSpawnsReleaseUrl`, release `db_latest`, asset `db-<commit>.zip`): `WagoClient.DownloadNodeSpawnsAsync`
+  keeps only its `gameobject` rows still there in patch 1.12 (`patch_max` 10) as `cache\sourcesmangos-objects-<asset>.tsv`
+  ("id map x y", ~1.5 MB; the zip is deleted). CMaNGOS lacks most high-level Eastern Kingdoms nodes (no Rich Thorium
+  in the Eastern Plaguelands); `ImportGatherNodes` takes VMaNGOS's spots first and adds a CMaNGOS spot only where
+  VMaNGOS has none of that node within a map unit (game data schema 37).
 - **Icons, map tiles and talent art** are the game's BLP files from `wago.tools/api/casc/<fileDataId>?download`,
   decoded by `Blp.cs` (DXT1/3/5, palettized, raw) and cached as PNG. File ids → names come from
   [wowdev/wow-listfile](https://github.com/wowdev/wow-listfile).

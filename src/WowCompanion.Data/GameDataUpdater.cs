@@ -91,6 +91,18 @@ public sealed class GameDataUpdater(WagoClient wago, DataSourceOptions options, 
             sourcesDump ??= NewestDump();
         }
 
+        // More ore and herb spots (VMaNGOS). Optional: on failure the file already on disk is used, or none.
+        if (options.NodeSpawnsReleaseUrl is { } release && sourcesDump is not null)
+        {
+            try
+            {
+                progress?.Report("Downloading ore and herb spots…");
+                await wago.DownloadNodeSpawnsAsync(release, SourcesDir, ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or TaskCanceledException
+                                           or System.Text.Json.JsonException && !ct.IsCancellationRequested) { }
+        }
+
         await BuildAsync(latest.Version, fallbackVersion, sourcesDump, ct);
         PruneCache(keep: [latest.Version, fallbackVersion]);
         return latest.Version;

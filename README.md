@@ -246,6 +246,8 @@ file in a folder named `font` next to the exe.
   items), via [wago.tools](https://wago.tools).
 - Drops and drop chances, vendors, quests, NPCs: the [CMaNGOS](https://github.com/cmangos/classic-db) Classic
   database, topped up with what the addon sees in game.
+- Ore and herb spots: the [VMaNGOS](https://github.com/vmangos/core) 1.12 database (its daily snapshot; only the
+  object spawns are kept), plus CMaNGOS and the nodes you gather.
 - Auction prices (optional): the [Auctionator](https://www.curseforge.com/wow/addons/auctionator) addon's last
   scans, read from its saved file when it's installed. Prices show next to items (search, item pages, loot,
   upgrades, reagents, shopping lists) and the profession planner uses them to pick the cheapest route. Scan the

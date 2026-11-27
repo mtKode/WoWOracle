@@ -172,7 +172,8 @@ public static class SourceImporter
             }));
 
         // ----- ore and herb nodes: every spot they can spawn (the map's gathering layer) -----
-        if (csv is not null && locator is not null) ImportGatherNodes(connection, transaction, objects, T("gameobject"), csv("Lock"), locator);
+        if (csv is not null && locator is not null)
+            ImportGatherNodes(connection, transaction, objects, T("gameobject"), csv("Lock"), locator, NodeSpawnsFile(Path.GetDirectoryName(dumpPath)));
 
         // ----- profession trainers: who teaches which recipe, at what skill -----
         ImportRecipeTrainers(connection, transaction, npcs, npcSpawn, T("npc_trainer"), T("npc_trainer_template"), T("spell_template"));
@@ -411,16 +412,40 @@ public static class SourceImporter
         command.ExecuteNonQuery();
     }
 
+    /// <summary>File name start of the extra object spawns next to the dump (VMaNGOS, WagoClient.DownloadNodeSpawnsAsync).</summary>
+    public const string NodeSpawnsPrefix = "vmangos-objects-";
+
+    /// <summary>The newest extra object spawns file in <paramref name="folder"/>, or null.</summary>
+    public static string? NodeSpawnsFile(string? folder) =>
+        folder is not null && Directory.Exists(folder)
+            ? Directory.EnumerateFiles(folder, NodeSpawnsPrefix + "*.tsv").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()
+            : null;
+
+    /// <summary>"id map x y" lines (world coordinates).</summary>
+    private static IEnumerable<(int Id, int Map, double X, double Y)> ReadNodeSpawns(string path)
+    {
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        foreach (var line in File.ReadLines(path))
+        {
+            var f = line.Split('\t');
+            if (f.Length == 4 && int.TryParse(f[0], inv, out var id) && int.TryParse(f[1], inv, out var map)
+                && double.TryParse(f[2], System.Globalization.NumberStyles.Float, inv, out var x)
+                && double.TryParse(f[3], System.Globalization.NumberStyles.Float, inv, out var y))
+                yield return (id, map, x, y);
+        }
+    }
+
     /// <summary>Lock types in the client's Lock table: 2 = a skill lock; its index 2 = Herbalism, 3 = Mining.</summary>
     private const int LockSkill = 2, LockHerbalism = 2, LockMining = 3;
 
     /// <summary>
     /// Ore veins and herbs: gameobjects (chests, type 3) whose lock (data0) asks for Mining or Herbalism, with the skill
     /// they need, and every spawn of them in zone coordinates. Spots can be shared by several node types (a pool
-    /// spawns one of them), so a spot is listed for each.
+    /// spawns one of them), so a spot is listed for each. With <paramref name="extraSpawns"/> (VMaNGOS, which has many
+    /// more), its spots come first and a CMaNGOS spot is only added where VMaNGOS has none of that node nearby.
     /// </summary>
     private static void ImportGatherNodes(SqliteConnection connection, SqliteTransaction transaction, Table objects, Table spawns,
-        string lockPath, ZoneLocator locator)
+        string lockPath, ZoneLocator locator, string? extraSpawns = null)
     {
         if (!File.Exists(lockPath)) return;
         var locks = new Dictionary<int, (string Kind, int Skill)>();
@@ -447,16 +472,31 @@ public static class SourceImporter
         Insert(connection, transaction, "INSERT OR REPLACE INTO gather_nodes (id, name, kind, skill) VALUES ($a, $b, $c, $d)",
             nodes.Select(n => new object[] { n.Key, n.Value.Name, n.Value.Kind, n.Value.Skill }));
 
+        IEnumerable<(int Id, string Zone, double X, double Y)> Located(IEnumerable<(int Id, int Map, double X, double Y)> rows) => rows
+            .Where(r => nodes.ContainsKey(r.Id))
+            .Select(r =>
+            {
+                var (zone, x, y) = locator.Locate(r.Map, r.X, r.Y);
+                return (r.Id, Zone: zone, X: Math.Round(x, 1), Y: Math.Round(y, 1));
+            })
+            .Where(s => s.Zone.Length > 0 && s.X > 0 && s.Y > 0);
+
+        var classic = Located(spawns.Rows.Select(r =>
+            (spawns.Int(r, "id"), spawns.Int(r, "map"), spawns.Real(r, "position_x"), spawns.Real(r, "position_y")))).ToList();
+        var extra = extraSpawns is not null && File.Exists(extraSpawns) ? Located(ReadNodeSpawns(extraSpawns)).Distinct().ToList() : [];
+        // Same node within about a map unit = the same spot.
+        var near = extra.Select(s => (s.Id, s.Zone, (int)Math.Round(s.X), (int)Math.Round(s.Y))).ToHashSet();
+        bool Covered((int Id, string Zone, double X, double Y) s)
+        {
+            var (cx, cy) = ((int)Math.Round(s.X), (int)Math.Round(s.Y));
+            for (var dx = -1; dx <= 1; dx++)
+                for (var dy = -1; dy <= 1; dy++)
+                    if (near.Contains((s.Id, s.Zone, cx + dx, cy + dy))) return true;
+            return false;
+        }
         Insert(connection, transaction, "INSERT INTO gather_spawns (node_id, zone, x, y) VALUES ($a, $b, $c, $d)",
-            spawns.Rows
-                .Where(r => nodes.ContainsKey(spawns.Int(r, "id")))
-                .Select(r =>
-                {
-                    var (zone, x, y) = locator.Locate(spawns.Int(r, "map"), spawns.Real(r, "position_x"), spawns.Real(r, "position_y"));
-                    return (Id: spawns.Int(r, "id"), Zone: zone, X: x, Y: y);
-                })
-                .Where(s => s.Zone.Length > 0 && s.X > 0 && s.Y > 0)
-                .Select(s => new object[] { s.Id, s.Zone, Math.Round(s.X, 1), Math.Round(s.Y, 1) }));
+            extra.Concat(classic.Where(s => !Covered(s)))
+                .Select(s => new object[] { s.Id, s.Zone, s.X, s.Y }));
     }
 
     /// <summary>Where each creature/object mostly stands: its most common map, and the first spawn there.</summary>

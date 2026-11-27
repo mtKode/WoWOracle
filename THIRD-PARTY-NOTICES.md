@@ -13,6 +13,7 @@ Neither this repository nor the release zip contains game data or game art. The 
 |---|---|---|
 | Game tables (items, spells, talents, maps), icons, map tiles and talent art | [wago.tools](https://wago.tools) | Files from the game client; © Blizzard Entertainment. |
 | Item sources, drop chances, NPCs, quests | [CMaNGOS classic-db](https://github.com/cmangos/classic-db) | GPL-2.0 database; game content © Blizzard Entertainment. |
+| Ore and herb spawn points | [VMaNGOS](https://github.com/vmangos/core) world database snapshot (downloaded by the app; only object spawns kept) | GPL-2.0 project; game content © Blizzard Entertainment. |
 | File id → file name list | [wowdev/wow-listfile](https://github.com/wowdev/wow-listfile) | Community list. |
 | Talent layout for Icy Veins / Wowhead links (only when you use those links) | [Icy Veins](https://www.icy-veins.com) | Fetched at most once a week per class. |
 

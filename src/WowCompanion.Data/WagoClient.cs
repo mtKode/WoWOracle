@@ -1,4 +1,7 @@
+using System.Globalization;
+using System.IO.Compression;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace WowCompanion.Data;
 
@@ -109,6 +112,87 @@ public sealed class WagoClient(HttpClient http, DataSourceOptions options)
             catch (UnauthorizedAccessException) { }
         }
         return path;
+    }
+
+    /// <summary>
+    /// The VMaNGOS world database snapshot (db-&lt;commit&gt;.zip, ~30 MB) boiled down to its object spawns: one
+    /// "id map x y" line each (SourceImporter.NodeSpawnsFile), ~1.5 MB, kept in <paramref name="folder"/>. The zip is
+    /// not kept. Returns the cached file when the snapshot hasn't changed; null when the release has no database.
+    /// </summary>
+    public async Task<string?> DownloadNodeSpawnsAsync(string releaseUrl, string folder, CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(folder);
+        string? name = null, url = null;
+        await using (var stream = await http.GetStreamAsync(releaseUrl, ct))
+        using (var document = await JsonDocument.ParseAsync(stream, cancellationToken: ct))
+        {
+            if (document.RootElement.TryGetProperty("assets", out var assets))
+            {
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var assetName = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
+                    if (assetName is null || !assetName.StartsWith("db-", StringComparison.OrdinalIgnoreCase)
+                        || !assetName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || assetName.Contains("sqlite", StringComparison.OrdinalIgnoreCase)) continue;
+                    name = assetName;
+                    url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
+                    break;
+                }
+            }
+        }
+        if (name is null || url is null) return null;
+
+        var path = Path.Combine(folder, SourceImporter.NodeSpawnsPrefix + Path.GetFileNameWithoutExtension(name) + ".tsv");
+        if (File.Exists(path)) return path;
+        var zip = Path.Combine(folder, name + ".tmp");
+        try
+        {
+            await using (var source = await http.GetStreamAsync(url, ct))
+            await using (var target = File.Create(zip))
+            {
+                await source.CopyToAsync(target, ct);
+            }
+            var temp = path + ".tmp";
+            using (var archive = ZipFile.OpenRead(zip))
+            {
+                var entry = archive.Entries.FirstOrDefault(e => e.Name.Equals("mangos.sql", StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidDataException("The VMaNGOS snapshot has no mangos.sql.");
+                using var reader = new StreamReader(entry.Open());
+                using var writer = new StreamWriter(temp);
+                await WriteObjectSpawnsAsync(reader, writer, ct);
+            }
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            try { File.Delete(zip); } catch (IOException) { }
+        }
+        foreach (var old in Directory.EnumerateFiles(folder, SourceImporter.NodeSpawnsPrefix + "*.tsv"))
+        {
+            if (string.Equals(old, path, StringComparison.OrdinalIgnoreCase)) continue;
+            try { File.Delete(old); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+        return path;
+    }
+
+    // `gameobject` rows: (guid, id, map, x, y, z, orientation, rotation0-3, spawn times, anim, state, flags, visibility,
+    // patch_min, patch_max). Rows that end before the last patch (patch_max < 10) are left out.
+    private static readonly Regex ObjectRow = new(@"\((\d+),(\d+),(\d+),([-\d.eE+]+),([-\d.eE+]+),([^()]*)\)", RegexOptions.Compiled);
+
+    internal static async Task WriteObjectSpawnsAsync(TextReader reader, TextWriter writer, CancellationToken ct = default)
+    {
+        while (await reader.ReadLineAsync(ct) is { } line)
+        {
+            if (!line.StartsWith("INSERT INTO `gameobject` ", StringComparison.Ordinal)) continue;
+            foreach (Match m in ObjectRow.Matches(line))
+            {
+                var rest = m.Groups[6].Value;
+                var last = rest.LastIndexOf(',');
+                if (last >= 0 && int.TryParse(rest[(last + 1)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var patchMax) && patchMax < 10) continue;
+                await writer.WriteLineAsync($"{m.Groups[2].Value}\t{m.Groups[3].Value}\t{m.Groups[4].Value}\t{m.Groups[5].Value}");
+            }
+        }
     }
 
     public static Version ParseVersion(string text) =>

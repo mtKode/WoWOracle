@@ -21,6 +21,12 @@ public sealed record DataSourceOptions
     /// </summary>
     public string? SourcesListingUrl { get; init; } = "https://api.github.com/repos/cmangos/classic-db/contents/Full_DB";
 
+    /// <summary>
+    /// GitHub release of the VMaNGOS 1.12 world database (a daily snapshot). Only its object spawns are kept: it has
+    /// far more ore and herb spots than CMaNGOS (Rich Thorium in the Eastern Plaguelands, Un'Goro ...). Null turns it off.
+    /// </summary>
+    public string? NodeSpawnsReleaseUrl { get; init; } = "https://api.github.com/repos/vmangos/core/releases/tags/db_latest";
+
     /// <summary>Tables taken from the fallback build.</summary>
     public IReadOnlyList<string> FallbackTables { get; init; } = ["ItemSparse", "ItemEffect", "ItemXItemEffect"];
 
