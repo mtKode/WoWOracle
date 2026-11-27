@@ -9,7 +9,7 @@ public sealed record FarmRow(FarmMob Mob)
 {
     public string Name => Mob.Name + (Mob.Elite ? " (elite)" : "");
     /// <summary>"6s 50c" a kill on average.</summary>
-    public string PerKillText => ItemText.Money(Mob.PerKill);
+    public string PerKillText => ItemText.Money(Mob.PerKill) + " / kill";
     public string Meta => $"{Mob.Zone} · level {Mob.LevelText} · {Mob.Spawns} spawns";
     /// <summary>"coin 2s 10c · greys 4s 40c · items 2c".</summary>
     public string Breakdown => string.Join(" · ", new[]
@@ -26,7 +26,7 @@ public sealed record FarmRow(FarmMob Mob)
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             var lines = new List<string>
             {
-                $"{Mob.Name}: about {PerKillText} a kill from coin and drops of {FarmService.SteadyChance:0}% or more",
+                $"{Mob.Name}: about {ItemText.Money(Mob.PerKill)} a kill from coin and drops of {FarmService.SteadyChance:0}% or more",
                 Mob.Rare > 0 ? $"Rarer drops add about {ItemText.Money(Mob.Rare)} on average (≈ {ItemText.Money(Mob.WithRare)} in all), but mostly don't happen in a short farm." : "",
                 "",
             };
