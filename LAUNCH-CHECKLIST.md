@@ -107,6 +107,10 @@ before launch).
 - [ ] Map → Ore & herbs → Rich Thorium Vein: Azshara, Winterspring, Eastern Plaguelands (~40 spots), Burning Steppes,
       Un'Goro Crater and Western Plaguelands. Black Lotus shows Burning Steppes, Eastern Plaguelands, Winterspring, Silithus.
 
+## 5m. Sync reloads (app 1.1.28, addon 0.13.1)
+- [ ] In game, `/oracle sync`: the UI reloads at once and `WTF\Account\…\SavedVariables\WoWOracle.lua` gets the current
+      time (0.13.0 reloaded from a timer, which the client ignored, so nothing was written until a typed `/reload`).
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

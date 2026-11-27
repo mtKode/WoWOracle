@@ -1801,8 +1801,9 @@ SlashCmdList.WOWORACLE = function(msg)
         pcall(refreshCharacter, "all")
         pcall(saveSelfExportNow)
         pcall(captureTalentLayout, true)
-        say("saved; reloading so the game writes the file for the app…")
-        C_Timer.After(0.5, ReloadUI)
+        say("saved; reloading so the game writes the file for the app… (if it doesn't, type /reload)")
+        -- Right away, inside your command: the client ignores a reload an addon starts later (from a timer).
+        if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
     elseif msg == "talents" then
         if captureTalentLayout(false) == 0 then say("couldn't read the talent tree.") end
     else
