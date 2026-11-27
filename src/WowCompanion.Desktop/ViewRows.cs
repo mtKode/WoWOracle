@@ -59,6 +59,9 @@ public sealed record RecipeRow(int SpellId, string Name, string Meta, string Rea
     public string SkillTip { get; init; } = "";
     /// <summary>Reagents, each in its item quality colour.</summary>
     public IReadOnlyList<ColoredLine> ReagentChips { get; init; } = [];
+    /// <summary>"Mats ≈ 72g 4s 20c" at the auction house (" · 1 without a price"); "" without prices.</summary>
+    public string CostText { get; init; } = "";
+    public bool HasCost => CostText.Length > 0;
     /// <summary>The item the recipe makes (0 for enchants and the like). Alt-compare uses it.</summary>
     public int CreatedItemId { get; init; }
 
@@ -113,8 +116,22 @@ public sealed record RecipeRow(int SpellId, string Name, string Meta, string Rea
         return price.Length > 0 ? $"{quantity}x {name} · {price}" : $"{quantity}x {name}";
     }
 
+    /// <summary>
+    /// What the reagents of one craft cost at the auction house (Auctionator scan): "72g 4s 20c", plus
+    /// " (1 without a price)" when some have none; "" when none has a price.
+    /// </summary>
+    public static string MatsCost(IReadOnlyList<ReagentPart> reagents, int crafts = 1, bool sayMissing = true)
+    {
+        var priced = reagents.Where(x => AuctionPrices.Unit(x.ItemId) > 0).ToList();
+        if (priced.Count == 0) return "";
+        var total = priced.Sum(x => AuctionPrices.Unit(x.ItemId) * x.Quantity) * crafts;
+        var missing = reagents.Count - priced.Count;
+        return ItemText.Money(total) + (missing > 0 && sayMissing ? $" ({missing} without a price)" : "");
+    }
+
     public static RecipeRow From(RecipeSummary r)
     {
+        var cost = MatsCost(r.Reagents);
         var learn = r.SkillEstimated ? $"~{r.MinSkill}" : r.MinSkill.ToString();
         var source = r.TaughtBy.Length > 0 ? $" · from {r.TaughtBy}" : r.SkillEstimated ? " · trainer (skill estimated)" : "";
         var bands = SkillBands.Ranges(r.MinSkill, r.YellowAt, r.GreyAt, r.SkillEstimated);
@@ -137,6 +154,7 @@ public sealed record RecipeRow(int SpellId, string Name, string Meta, string Rea
             StatLine = item.Stats,
             EffectLine = item.Effects,
             CreatedItemId = r.CreatedItemId,
+            CostText = cost.Length > 0 ? $"Mats ≈ {cost}" : "",
         };
     }
 }

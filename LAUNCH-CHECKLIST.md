@@ -96,6 +96,11 @@ before launch).
       **Horde only** is ticked and Helm of Heroism comes from Mokvar (Orgrimmar), with no Soulforge Helm (Ironforge);
       untick it and the Alliance quests show too. An Alliance set says **Alliance only**.
 
+## 5k. Mats cost (app 1.1.26)
+- [ ] With an Auctionator scan: Recipes → Enchanting "weapon": each recipe has a gold **Mats ≈ …** line, the sum of
+      its priced reagents ("(1 without a price)" when some have none). The craft list's rows say "mats ≈ …", with
+      the total and each for more than one craft.
+
 ## 6. Game data
 - [ ] Newer `wowf` build downloaded (status line / Chronicle); first-start card shows while building on a fresh PC.
 - [ ] Talents are Forever's (e.g. Mage Arcane top row: Wand Specialization, Arcane Focus, Improved Channeling, Missile Barrage).

@@ -127,7 +127,8 @@ and the quest text. Hold **left Alt** over any item anywhere in the app to compa
 
 ### Recipes (Ctrl+2)
 All recipes of a profession with their reagents, what they make and the skill colours (orange, yellow, green,
-grey). Filter by recipe or reagent name, sort, and press **+ Craft list** (or Ctrl+Enter) to queue one.
+grey). With auction prices, each recipe also shows what one craft's mats cost (**Mats ≈ 72g 4s**), and the
+craft list shows it per recipe too. Filter by recipe or reagent name, sort, and press **+ Craft list** (or Ctrl+Enter) to queue one.
 
 ### Crafting (Ctrl+3)
 - **Craft list**: what you plan to make, with one shopping list for everything. Tick recipes off as you craft them.

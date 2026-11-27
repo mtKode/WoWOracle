@@ -537,7 +537,8 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
             CraftList.Add(new CraftRow(
                 recipe.SpellId, recipe.Name,
                 $"{recipe.Profession} · requires {(recipe.SkillEstimated ? "~" : "")}{recipe.MinSkill}"
-                + (recipe.GreyAt > 0 ? $" · grey at {recipe.GreyAt}" : ""),
+                + (recipe.GreyAt > 0 ? $" · grey at {recipe.GreyAt}" : "")
+                + CraftCost(recipe, quantities[recipe.SpellId]),
                 quantities[recipe.SpellId],
                 ItemQuality.BrushFor(recipe.CreatedItemId > 0 ? recipe.Quality : 1),
                 RecipeIcons.Or(recipe.IconId, recipe.MinSkill))
@@ -568,5 +569,13 @@ public partial class MainViewModel(AppPaths paths, GameDataUpdater updater) : Ob
             ? $"{CraftList.Count} recipes, {quantities.Values.Sum()} crafts in total"
             : $"{done.Count} of {CraftList.Count} recipes done · {left} crafts left";
         HasDoneCrafts = done.Count > 0;
+    }
+
+    /// <summary>" · mats ≈ 4g 10s, 2g 5s each" for a craft list row, from the auction scan; "" without prices.</summary>
+    private static string CraftCost(RecipeSummary recipe, int crafts)
+    {
+        var each = RecipeRow.MatsCost(recipe.Reagents);
+        if (each.Length == 0) return "";
+        return crafts > 1 ? $" · mats ≈ {RecipeRow.MatsCost(recipe.Reagents, crafts)}, {RecipeRow.MatsCost(recipe.Reagents, 1, false)} each" : $" · mats ≈ {each}";
     }
 }

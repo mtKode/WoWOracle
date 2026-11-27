@@ -1464,6 +1464,10 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
+                                        <!-- What one craft's reagents cost at the auction house (Auctionator scan) -->
+                                        <TextBlock Text="{Binding CostText}" FontSize="12" Foreground="#E6C35C" Margin="0,2,0,0"
+                                                   ToolTip="One craft's reagents at the latest auction house scan"
+                                                   Visibility="{Binding HasCost, Converter={StaticResource BoolToVis}}" />
                                         <!-- Skill-up bands: orange always +1, yellow usually, green sometimes, grey never. -->
                                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0" ToolTip="{Binding SkillTip}">
                                             <TextBlock Text="{Binding Orange}" FontSize="12" Foreground="#FF8040" />
