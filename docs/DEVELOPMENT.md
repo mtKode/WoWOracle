@@ -70,7 +70,7 @@ Everything lives in `%LOCALAPPDATA%\WowCompanion`:
   tables are worked out at import.
 - **Ore and herb spots** also come from the [VMaNGOS](https://github.com/vmangos/core) daily database snapshot
   (`DataSourceOptions.NodeSpawnsReleaseUrl`, release `db_latest`, asset `db-<commit>.zip`): `WagoClient.DownloadNodeSpawnsAsync`
-  keeps only its `gameobject` rows still there in patch 1.12 (`patch_max` 10) as `cache\sourcesmangos-objects-<asset>.tsv`
+  keeps only its `gameobject` rows still there in patch 1.12 (`patch_max` 10) as `cache\sources\vmangos-objects-<asset>.tsv`
   ("id map x y", ~1.5 MB; the zip is deleted). CMaNGOS lacks most high-level Eastern Kingdoms nodes (no Rich Thorium
   in the Eastern Plaguelands); `ImportGatherNodes` takes VMaNGOS's spots first and adds a CMaNGOS spot only where
   VMaNGOS has none of that node within a map unit (game data schema 37).
